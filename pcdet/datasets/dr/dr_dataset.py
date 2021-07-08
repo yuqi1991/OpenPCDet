@@ -154,7 +154,7 @@ class DRDataset(DatasetTemplate):
 
         return pts_valid_flag
 
-    def get_infos(self, num_workers=4, has_label=True, count_inside_pts=False, sample_id_list=None):
+    def get_infos(self, num_workers=12, has_label=True, count_inside_pts=False, sample_id_list=None):
         import concurrent.futures as futures
 
         def process_single_scene(sample_idx):
@@ -318,14 +318,15 @@ class DRDataset(DatasetTemplate):
 
             calib = batch_dict['calib'][batch_index]
             image_shape = batch_dict['image_shape'][batch_index].cpu().numpy()
-            pred_boxes_camera = box_utils.boxes3d_lidar_to_kitti_camera(pred_boxes, calib)
-            pred_boxes_img = box_utils.boxes3d_kitti_camera_to_imageboxes(
-                pred_boxes_camera, calib, image_shape=image_shape
-            )
+            pred_boxes_camera = pred_boxes
+            # pred_boxes_camera = box_utils.boxes3d_lidar_to_kitti_camera(pred_boxes, calib)
+            # pred_boxes_img = box_utils.boxes3d_kitti_camera_to_imageboxes(
+            #     pred_boxes_camera, calib, image_shape=image_shape
+            # )
 
             pred_dict['name'] = np.array(class_names)[pred_labels - 1]
             pred_dict['alpha'] = -np.arctan2(-pred_boxes[:, 1], pred_boxes[:, 0]) + pred_boxes_camera[:, 6]
-            pred_dict['bbox'] = pred_boxes_img
+            # pred_dict['bbox'] = pred_boxes_img
             pred_dict['dimensions'] = pred_boxes_camera[:, 3:6]
             pred_dict['location'] = pred_boxes_camera[:, 0:3]
             pred_dict['rotation_y'] = pred_boxes_camera[:, 6]
@@ -345,14 +346,14 @@ class DRDataset(DatasetTemplate):
             if output_path is not None:
                 cur_det_file = output_path / ('%s.txt' % frame_id)
                 with open(cur_det_file, 'w') as f:
-                    bbox = single_pred_dict['bbox']
+                    # bbox = single_pred_dict['bbox']
                     loc = single_pred_dict['location']
                     dims = single_pred_dict['dimensions']  # lhw -> hwl
 
-                    for idx in range(len(bbox)):
-                        print('%s -1 -1 %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f'
+                    for idx in range(len(loc)):
+                        print('%s -1 -1 %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f'
                               % (single_pred_dict['name'][idx], single_pred_dict['alpha'][idx],
-                                 bbox[idx][0], bbox[idx][1], bbox[idx][2], bbox[idx][3],
+                                 # bbox[idx][0], bbox[idx][1], bbox[idx][2], bbox[idx][3],
                                  dims[idx][1], dims[idx][2], dims[idx][0], loc[idx][0],
                                  loc[idx][1], loc[idx][2], single_pred_dict['rotation_y'][idx],
                                  single_pred_dict['score'][idx]), file=f)
@@ -363,11 +364,11 @@ class DRDataset(DatasetTemplate):
         if 'annos' not in self.kitti_infos[0].keys():
             return None, {}
 
-        from .kitti_object_eval_python import eval as kitti_eval
+        import pcdet.datasets.dr.eval as dr_eval
 
         eval_det_annos = copy.deepcopy(det_annos)
         eval_gt_annos = [copy.deepcopy(info['annos']) for info in self.kitti_infos]
-        ap_result_str, ap_dict = kitti_eval.get_official_eval_result(eval_gt_annos, eval_det_annos, class_names)
+        ap_result_str, ap_dict = dr_eval.get_official_eval_result(eval_gt_annos, eval_det_annos, class_names)
 
         return ap_result_str, ap_dict
 
@@ -397,11 +398,15 @@ class DRDataset(DatasetTemplate):
         if 'annos' in info:
             annos = info['annos']
             annos = common_utils.drop_info_with_name(annos, name='DontCare')
-            loc, dims, rots = annos['location'], annos['dimensions'], annos['rotation_y']
+
             gt_names = annos['name']
             # print(loc.shape,dims.shape,np.expand_dims(rots,axis=1).shape)
-            gt_boxes_lidar = np.concatenate([loc, dims, np.expand_dims(rots,axis=1)], axis=1).astype(np.float32)
+            if gt_names.shape[0]:
+                loc, dims, rots = annos['location'], annos['dimensions'], annos['rotation_y']
+                gt_boxes_lidar = np.concatenate([loc, dims, np.expand_dims(rots,axis=1)], axis=1).astype(np.float32)
             # gt_boxes_lidar = box_utils.boxes3d_kitti_camera_to_lidar(gt_boxes_camera, calib)
+            else:
+                gt_boxes_lidar = np.empty([0,0])
 
 
             input_dict.update({
@@ -438,7 +443,7 @@ class DRDataset(DatasetTemplate):
         return data_dict
 
 
-def create_dr_infos(dataset_cfg, class_names, data_path, save_path, workers=4):
+def create_dr_infos(dataset_cfg, class_names, data_path, save_path, workers=12):
     dataset = DRDataset(dataset_cfg=dataset_cfg, class_names=class_names, root_path=data_path, training=False)
     train_split, val_split = 'train', 'val'
 

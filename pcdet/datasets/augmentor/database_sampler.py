@@ -118,6 +118,8 @@ class DataBaseSampler(object):
     def add_sampled_boxes_to_scene(self, data_dict, sampled_gt_boxes, total_valid_sampled_dict):
         gt_boxes_mask = data_dict['gt_boxes_mask']
         gt_boxes = data_dict['gt_boxes'][gt_boxes_mask]
+        if gt_boxes.shape[0] == 0:
+            gt_boxes = np.zeros([1,7])
         gt_names = data_dict['gt_names'][gt_boxes_mask]
         points = data_dict['points']
         if self.sampler_cfg.get('USE_ROAD_PLANE', False):
@@ -167,6 +169,8 @@ class DataBaseSampler(object):
         """
         gt_boxes = data_dict['gt_boxes']
         gt_names = data_dict['gt_names'].astype(str)
+        if gt_boxes.shape[0] == 0:
+            gt_boxes = np.zeros([1,7])
         existed_boxes = gt_boxes
         total_valid_sampled_dict = []
         for class_name, sample_group in self.sample_groups.items():

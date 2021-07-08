@@ -177,9 +177,13 @@ class DatasetTemplate(torch_data.Dataset):
                     ret[key] = np.concatenate(coors, axis=0)
                 elif key in ['gt_boxes']:
                     max_gt = max([len(x) for x in val])
-                    batch_gt_boxes3d = np.zeros((batch_size, max_gt, val[0].shape[-1]), dtype=np.float32)
+                    dims = 8
+                    if val[0].shape[-1] != 1:
+                        dims = val[0].shape[-1]
+                    batch_gt_boxes3d = np.zeros((batch_size, max_gt, dims), dtype=np.float32)
                     for k in range(batch_size):
-                        batch_gt_boxes3d[k, :val[k].__len__(), :] = val[k]
+                        if val[k].shape[0]:
+                            batch_gt_boxes3d[k, :val[k].__len__(), :] = val[k]
                     ret[key] = batch_gt_boxes3d
                 elif key in ['gt_boxes2d']:
                     max_boxes = 0

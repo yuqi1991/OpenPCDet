@@ -2,7 +2,6 @@ import argparse
 import glob
 from pathlib import Path
 
-import mayavi.mlab as mlab
 import numpy as np
 import torch
 import math
@@ -10,7 +9,6 @@ from pcdet.config import cfg, cfg_from_yaml_file
 from pcdet.datasets import DatasetTemplate
 from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
-from visual_utils import visualize_utils as V
 import open3d as o3d
 
 class_colors = {
@@ -93,9 +91,9 @@ def parse_config():
 
 def get_obj_corners(tensor):
     obj = tensor.cpu().numpy()
-    center = [obj[2], obj[0], obj[1]]
-    size = [obj[5], obj[3], obj[4]]
-    yaw = obj[6]
+    center = [obj[2], obj[0], obj[1]]  # xyz
+    size = [obj[5], obj[3], obj[4]]    # lwh
+    yaw = obj[6]  # heading
     rot = np.asmatrix([[math.cos(yaw), -math.sin(yaw)], \
                        [math.sin(yaw),  math.cos(yaw)]])
     plain_pts = np.asmatrix([[0.5 * size[0], 0.5*size[1]], \
