@@ -65,7 +65,9 @@ class DRDataset(DatasetTemplate):
     def get_lidar(self, idx):
         lidar_file = self.root_split_path / 'pointcloud' / ('%s.bin' % idx)
         assert lidar_file.exists()
-        return np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
+        points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
+        points = points[points[:,2] > -1.4]
+        return points
 
     def get_image(self, idx):
         """
@@ -316,8 +318,8 @@ class DRDataset(DatasetTemplate):
             if pred_scores.shape[0] == 0:
                 return pred_dict
 
-            calib = batch_dict['calib'][batch_index]
-            image_shape = batch_dict['image_shape'][batch_index].cpu().numpy()
+            # calib = batch_dict['calib'][batch_index]
+            # image_shape = batch_dict['image_shape'][batch_index].cpu().numpy()
             pred_boxes_camera = pred_boxes
             # pred_boxes_camera = box_utils.boxes3d_lidar_to_kitti_camera(pred_boxes, calib)
             # pred_boxes_img = box_utils.boxes3d_kitti_camera_to_imageboxes(

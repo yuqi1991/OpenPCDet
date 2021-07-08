@@ -16,11 +16,21 @@ import sys
 
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
+
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list
 from visualization_msgs.msg import Marker, MarkerArray
 import ros_numpy
+
+class_colors = {
+    1:(1.0, 0., 0.),
+    2:(1., 0., 1.),
+    3:(0., 1., 0.),
+    4:(0., 0., 1.),
+    5:(0., 1., 1.),
+    6:(0., 1., 1.),
+}
 
 def euler_to_quaternion(yaw, pitch, roll):
     qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
@@ -90,7 +100,7 @@ class Visualizer(object):
         markerArray = MarkerArray()
 
         for i in range(obj_size):
-            if scores[i] > 0.7:
+            if scores[i] > 0.45:
                 box = boxes[i]
                 label = labels[i]
                 marker = Marker()
@@ -99,9 +109,9 @@ class Visualizer(object):
                 marker.action = marker.ADD
                 marker.id = i
                 marker.color.a = 1.0
-                marker.color.r = 1.0
-                marker.color.g = 1.0
-                marker.color.b = 0.0
+                marker.color.r = class_colors[label.item()][0]
+                marker.color.g = class_colors[label.item()][1]
+                marker.color.b = class_colors[label.item()][2]
                 marker.scale.x = box[3].item()
                 marker.scale.y = box[4].item()
                 marker.scale.z = box[5].item()
@@ -152,6 +162,8 @@ class Inference:
     def callback(self,data):
         start = rospy.Time.now()
         pc_np = self.get_xyzi_points(ros_numpy.point_cloud2.pointcloud2_to_array(data), remove_nans=True).astype(np.float32)
+        pc_np[:,2] -= 0.5
+        pc_np = pc_np[pc_np[:,2] > -1.4]
         pc_np[:,3] = pc_np[:,3]/255.0
 
         with torch.no_grad():

@@ -1,4 +1,4 @@
-CLASS_NAMES: ['CAR', 'PEDESTRIAN', 'CYCLIST','TRUCK','CONE']
+CLASS_NAMES: ['CAR', 'PEDESTRIAN', 'CYCLIST','TRUCK','CONE','BUS']
 
 DATA_CONFIG: 
     _BASE_CONFIG_: cfgs/dataset_configs/dr_dataset.yaml
@@ -28,10 +28,10 @@ DATA_CONFIG:
               DB_INFO_PATH:
                   - dr_dbinfos_train.pkl
               PREPARE: {
-                 filter_by_min_points: ['CAR:5', 'PEDESTRIAN:5', 'CYCLIST:5','CONE:5','TRUCK:5'],
+                 filter_by_min_points: ['CAR:5', 'PEDESTRIAN:5', 'CYCLIST:5','CONE:5','TRUCK:5','BUS:5'],
               }
 
-              SAMPLE_GROUPS: ['CAR:15','PEDESTRIAN:15', 'CYCLIST:15','CONE:15','TRUCK:15']
+              SAMPLE_GROUPS: ['CAR:15','PEDESTRIAN:15', 'CYCLIST:15','CONE:15','TRUCK:15','BUS:15']
               NUM_POINT_FEATURES: 4
               DATABASE_WITH_FAKELIDAR: False
               REMOVE_EXTRA_WIDTH: [0.0, 0.0, 0.0]
@@ -100,6 +100,16 @@ MODEL:
           },
           {
             'class_name': 'TRUCK',
+            'anchor_sizes': [ [ 10, 3, 3 ] ],
+            'anchor_rotations': [ 0, 1.57 ],
+            'anchor_bottom_heights': [ -1.78 ],
+            'align_center': False,
+            'feature_map_stride': 2,
+            'matched_threshold': 0.6,
+            'unmatched_threshold': 0.45
+          },
+          {
+            'class_name': 'BUS',
             'anchor_sizes': [ [ 10, 3, 3 ] ],
             'anchor_rotations': [ 0, 1.57 ],
             'anchor_bottom_heights': [ -1.78 ],

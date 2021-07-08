@@ -71,7 +71,7 @@ class DemoDataset(DatasetTemplate):
         }
 
         data_dict = self.prepare_data(data_dict=input_dict)
-        return data_dict
+        return (data_dict,points)
 
 
 def parse_config():
@@ -91,8 +91,8 @@ def parse_config():
 
 def get_obj_corners(tensor):
     obj = tensor.cpu().numpy()
-    center = [obj[2], obj[0], obj[1]]  # xyz
-    size = [obj[5], obj[3], obj[4]]    # lwh
+    center = [obj[0], obj[1], obj[2]]  # xyz
+    size = [obj[3], obj[4], obj[5]]    # lwh
     yaw = obj[6]  # heading
     rot = np.asmatrix([[math.cos(yaw), -math.sin(yaw)], \
                        [math.sin(yaw),  math.cos(yaw)]])
@@ -137,7 +137,9 @@ def main():
     with torch.no_grad():
         for idx, data_dict in enumerate(demo_dataset):
             logger.info(f'Visualized sample index: \t{idx + 1}')
-            data_dict = demo_dataset.collate_batch([data_dict])
+            cloud = data_dict[1]
+            cloud = cloud[cloud[:,2] > -1.4]
+            data_dict = demo_dataset.collate_batch([data_dict[0]])
             load_data_to_gpu(data_dict)
             pred_dicts, _ = model.forward(data_dict)
 
@@ -148,7 +150,7 @@ def main():
             # mlab.show(stop=True)
 
             # show
-            cloud = data_dict['points'].cpu().numpy()
+            # cloud = data_dict['points'].cpu().numpy()
             objects = pred_dicts[0]['pred_boxes']
             pc_data = o3d.PointCloud()
             pc_data.points = o3d.Vector3dVector(cloud[:, 0:3])
@@ -159,13 +161,15 @@ def main():
                 # if class_name not in class_colors:
                 #     print("Found wrong object type:{}".format(class_name))
                 #     continue
+                if pred_dicts[0]['pred_scores'][i] < 0.5:
+                    continue
                 color = (1, 0, 0)
-
+                FOR1 = o3d.create_mesh_coordinate_frame(size=1, origin=[0, 0, 0])
                 corners = get_obj_corners(pred_dicts[0]['pred_boxes'][i])
                 line_set = render_3dbbox(corners, color)
                 bbox3ds.append(line_set)
             pc_data.colors = o3d.Vector3dVector(pc_color)
-            o3d.visualization.draw_geometries([pc_data] + bbox3ds)
+            o3d.visualization.draw_geometries([FOR1,pc_data] + bbox3ds)
 
     logger.info('Demo done.')
 
