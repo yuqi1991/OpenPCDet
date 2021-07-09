@@ -12,16 +12,23 @@ from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
 # from visual_utils import visualize_utils as V
 
+
 import sys
 
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
+sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
 
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list
 from visualization_msgs.msg import Marker, MarkerArray
 import ros_numpy
+
+from AB3DMOT_libs.model import AB3DMOT
+from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
+
+from
 
 class_colors = {
     1:(1.0, 0., 0.),
@@ -93,39 +100,37 @@ class Visualizer(object):
         self.publisher = rospy.Publisher('/objects', MarkerArray, queue_size=10)
 
     def pub(self,pred_dict,stamp):
-        boxes = pred_dict[0]['pred_boxes']
-        scores = pred_dict[0]['pred_scores']
-        labels = pred_dict[0]['pred_labels']
-        obj_size = boxes.size(0)
+        obj_size = pred_dict.shape[0]
+        is_tracked = pred_dict.shape[1] == 10
         markerArray = MarkerArray()
 
         for i in range(obj_size):
-            if scores[i] > 0.45:
-                box = boxes[i]
-                label = labels[i]
-                marker = Marker()
-                marker.header.frame_id = "lidar"
-                marker.type = marker.CUBE
-                marker.action = marker.ADD
-                marker.id = i
-                marker.color.a = 1.0
-                marker.color.r = class_colors[label.item()][0]
-                marker.color.g = class_colors[label.item()][1]
-                marker.color.b = class_colors[label.item()][2]
-                marker.scale.x = box[3].item()
-                marker.scale.y = box[4].item()
-                marker.scale.z = box[5].item()
-                quaternion = euler_to_quaternion(box[6].item(),0, 0)
-                marker.pose.orientation.x = quaternion[0]
-                marker.pose.orientation.y = quaternion[1]
-                marker.pose.orientation.z = quaternion[2]
-                marker.pose.orientation.w = quaternion[3]
-                marker.pose.position.x = box[0].item()
-                marker.pose.position.y = box[1].item()
-                marker.pose.position.z = box[2].item()
-                marker.header.stamp=stamp
-                marker.lifetime = rospy.Duration(0,100000000)
-                markerArray.markers.append(marker)
+            marker = Marker()
+            marker.header.frame_id = "lidar"
+            marker.type = marker.CUBE
+            marker.action = marker.ADD
+            marker.id = i
+            if is_tracked:
+                marker.id = int(pred_dict[i][7])
+            marker.color.a = 1.0
+            label = pred_dict[i][9]
+            marker.color.r = class_colors[label][0]
+            marker.color.g = class_colors[label][1]
+            marker.color.b = class_colors[label][2]
+            marker.scale.x = pred_dict[i][4]
+            marker.scale.y = pred_dict[i][5]
+            marker.scale.z = pred_dict[i][6]
+            quaternion = euler_to_quaternion(pred_dict[i][3].item(),0, 0)
+            marker.pose.orientation.x = quaternion[0]
+            marker.pose.orientation.y = quaternion[1]
+            marker.pose.orientation.z = quaternion[2]
+            marker.pose.orientation.w = quaternion[3]
+            marker.pose.position.x = pred_dict[i][0]
+            marker.pose.position.y = pred_dict[i][1]
+            marker.pose.position.z = pred_dict[i][2]
+            marker.header.stamp=stamp
+            marker.lifetime = rospy.Duration(0,100000000)
+            markerArray.markers.append(marker)
         self.publisher.publish(markerArray)
 
 
@@ -136,11 +141,25 @@ class Inference:
         self.model.cuda()
         self.model.eval()
         self.vis = Visualizer()
+        self.tracker = AB3DMOT()
         self.demo_dataset = demo_dataset
         self.logger = logger
         pcd_topic = "/sensing/lidar/combined_point_cloud"
         self.subcriber = rospy.Subscriber(pcd_topic, PointCloud2, self.callback)
         self.frame_id = 0
+
+    def remap_result(self,pred_dicts, score_threadhold = 0.4):
+        scores = pred_dicts[0]['pred_scores'].cpu().numpy()
+        valids = scores > score_threadhold
+        labels = pred_dicts[0]['pred_labels'].cpu().numpy()[valids]
+        boxes = pred_dicts[0]['pred_boxes'].cpu().numpy()[valids,:]
+        scores = scores[valids]
+        obj_size = boxes.shape[0]
+        dets = np.zeros([obj_size,7])
+        reorder = [0,1,2,6,3,4,5]
+        dets = boxes[:,reorder]
+        other_info = np.concatenate([scores[:,np.newaxis],labels[:,np.newaxis]],axis=1)
+        return np.concatenate([dets,other_info],axis=1)
 
     def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=np.float):
         '''Pulls out x, y, and z columns from the cloud recordarray, and returns
@@ -171,9 +190,15 @@ class Inference:
             self.frame_id +=1
             data_dict = self.demo_dataset.collate_batch([data_dict])
             load_data_to_gpu(data_dict)
+            start_inf = rospy.Time.now()
             pred_dicts, _ = self.model.forward(data_dict)
-            self.vis.pub(pred_dicts,data.header.stamp)
-            print("inference done: {}s".format(rospy.Time.now().to_sec() - start.to_sec()))
+            end_inf = rospy.Time.now().to_sec() - start_inf.to_sec()
+            all_dets = self.remap_result(pred_dicts)
+            start_track = rospy.Time.now()
+            all_dets = self.tracker.update(all_dets)
+            end_track = rospy.Time.now().to_sec() - start_track.to_sec()
+            self.vis.pub(all_dets,data.header.stamp)
+            print("whole inference done: {}s, track time: {}s".format(end_inf, end_track))
 
 
 
@@ -206,24 +231,8 @@ def main():
 
     infer = Inference(args,cfg,logger,demo_dataset)
 
-    # model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=demo_dataset)
-    # model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=True)
-    # model.cuda()
-    # model.eval()
-    # with torch.no_grad():
-    #     for idx, data_dict in enumerate(demo_dataset):
-    #         logger.info(f'Visualized sample index: \t{idx + 1}')
-    #         data_dict = demo_dataset.collate_batch([data_dict])
-    #         load_data_to_gpu(data_dict)
-    #         pred_dicts, _ = model.forward(data_dict)
-
     while not rospy.is_shutdown():
-        # vis.pub(pred_dicts)
         rospy.sleep(0.01)
-        # print("done")
-
-
-    # logger.info('Demo done.')
 
 
 if __name__ == '__main__':

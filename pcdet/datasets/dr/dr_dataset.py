@@ -208,7 +208,7 @@ class DRDataset(DatasetTemplate):
                     gt_boxes_lidar = np.concatenate([loc_lidar, l, w, h, rots[..., np.newaxis]], axis=1)
                     annotations['gt_boxes_lidar'] = gt_boxes_lidar
                 else:
-                    annotations['gt_boxes_lidar'] = np.empty([0,0])
+                    annotations['gt_boxes_lidar'] = np.empty([1,7])
 
                 info['annos'] = annotations
 
