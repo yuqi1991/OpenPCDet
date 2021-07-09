@@ -32,3 +32,14 @@ class PointPillar(Detector3DTemplate):
 
         loss = loss_rpn
         return loss, tb_dict, disp_dict
+
+    def onnx_export(self,batch_dict, module_list=None):
+        if module_list == None:
+            module_list = []
+
+        for cur_module in self.module_list:
+            if cur_module.model_cfg['NAME'] not in module_list:
+                return batch_dict
+            else:
+                batch_dict = cur_module(batch_dict)
+

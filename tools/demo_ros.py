@@ -28,7 +28,7 @@ import ros_numpy
 from AB3DMOT_libs.model import AB3DMOT
 from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
 
-from
+from lidar_perception.msg import PerceptionObjects,PerceptionObject
 
 class_colors = {
     1:(1.0, 0., 0.),
@@ -97,21 +97,27 @@ class DemoDataset(DatasetTemplate):
 
 class Visualizer(object):
     def __init__(self):
-        self.publisher = rospy.Publisher('/objects', MarkerArray, queue_size=10)
+        self.publisher_marks = rospy.Publisher('/objects', MarkerArray, queue_size=10)
+        self.publisher_objs = rospy.Publisher('/perception/objects', PerceptionObjects, queue_size=10)
 
     def pub(self,pred_dict,stamp):
         obj_size = pred_dict.shape[0]
         is_tracked = pred_dict.shape[1] == 10
         markerArray = MarkerArray()
+        percep_objs = PerceptionObjects()
+        percep_objs.header.stamp = stamp
 
         for i in range(obj_size):
             marker = Marker()
+            per_obj = PerceptionObject()
             marker.header.frame_id = "lidar"
             marker.type = marker.CUBE
             marker.action = marker.ADD
             marker.id = i
+            per_obj.id = i
             if is_tracked:
                 marker.id = int(pred_dict[i][7])
+                per_obj.id = int(pred_dict[i][7])
             marker.color.a = 1.0
             label = pred_dict[i][9]
             marker.color.r = class_colors[label][0]
@@ -128,10 +134,23 @@ class Visualizer(object):
             marker.pose.position.x = pred_dict[i][0]
             marker.pose.position.y = pred_dict[i][1]
             marker.pose.position.z = pred_dict[i][2]
+
             marker.header.stamp=stamp
             marker.lifetime = rospy.Duration(0,100000000)
             markerArray.markers.append(marker)
-        self.publisher.publish(markerArray)
+
+            per_obj.bounding_box.x = pred_dict[i][4]
+            per_obj.bounding_box.y = pred_dict[i][5]
+            per_obj.bounding_box.z = pred_dict[i][6]
+            per_obj.position.x = pred_dict[i][0]
+            per_obj.position.y = pred_dict[i][1]
+            per_obj.position.z = pred_dict[i][2]
+            per_obj.heading = pred_dict[i][3]
+            per_obj.type = label
+            percep_objs.objects.append(per_obj)
+
+        self.publisher_marks.publish(markerArray)
+        self.publisher_objs.publish(percep_objs)
 
 
 class Inference:

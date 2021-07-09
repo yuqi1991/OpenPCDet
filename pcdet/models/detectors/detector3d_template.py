@@ -383,3 +383,6 @@ class Detector3DTemplate(nn.Module):
         logger.info('==> Done')
 
         return it, epoch
+
+    def onnx_export(self,data, module_list=None):
+        raise NotImplementedError
