@@ -6,7 +6,6 @@ from ....utils import box_utils
 
 
 class AxisAlignedTargetAssigner(object):
-
     def __init__(self, model_cfg, class_names, box_coder, match_height=False):
         super().__init__()
 

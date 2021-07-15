@@ -384,5 +384,5 @@ class Detector3DTemplate(nn.Module):
 
         return it, epoch
 
-    def onnx_export(self,data, module_list=None):
+    def onnx_export(self,input):
         raise NotImplementedError

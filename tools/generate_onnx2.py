@@ -3,8 +3,12 @@ import glob
 from pathlib import Path
 
 import numpy as np
-import torch
+import torch,time
 import math
+import pprint, pickle
+
+from onnxruntime.quantization.onnx_model import ONNXModel
+
 from pcdet.config import cfg, cfg_from_yaml_file
 from pcdet.datasets import DatasetTemplate
 from pcdet.models import build_network, load_data_to_gpu
@@ -103,18 +107,98 @@ def main():
     model.cuda()
     model.eval()
     with torch.no_grad():
-        for idx, data_dict in enumerate(demo_dataset):
-            logger.info(f'Visualized sample index: \t{idx + 1}')
-            cloud = data_dict[1]
-            cloud = cloud[cloud[:,2] > -1.4]
-            data_dict = demo_dataset.collate_batch([data_dict[0]])
-            load_data_to_gpu(data_dict)
-            ret = model.onnx_export(data_dict,['PillarVFE'])
-            print('111')
+        data_dict = demo_dataset[0]
+        data_dict = demo_dataset.collate_batch([data_dict[0]])
+        load_data_to_gpu(data_dict)
+        voxel_features = data_dict['voxels']
+        voxel_num_points = data_dict['voxel_num_points']
+        coords = data_dict['voxel_coords']
+        input_names = ["voxel_features","voxel_num_points","coords"]
+        input = [voxel_features,voxel_num_points,coords]
+
+        # ############### EXPORT  PFE #################
+        torch.onnx.export(model, input, "pfe.onnx", verbose=True, input_names=input_names,keep_initializers_as_inputs=True,
+                          do_constant_folding=True,
+                          output_names = ['batch_cls_preds','batch_box_preds'],opset_version=11,
+                          dynamic_axes={
+                              "voxel_features":{0:"voxel_num"},
+                              "voxel_num_points":{0:"voxel_num"},
+                              "coords":{0:"voxel_num"},
+                              "pfe_feats":{0:"voxel_num"}
+                          })
 
 
+        data_dict = demo_dataset[2]
+        data_dict = demo_dataset.collate_batch([data_dict[0]])
+        load_data_to_gpu(data_dict)
+        voxel_features = data_dict['voxels']
+        voxel_num_points = data_dict['voxel_num_points']
+        coords = data_dict['voxel_coords']
+        input = [voxel_features,voxel_num_points,coords]
+        ############## PFE-Layer TensorRT #####
+        import onnx
+        import onnxruntime
+        import onnxsim
+        pfe_model = onnx.load("pfe.onnx")
+        logger.info('Demo done.')
+        pfe_session = onnxruntime.InferenceSession("pfe.onnx")
+        pfe_inputs = {pfe_session.get_inputs()[0].name: (voxel_features.data.cpu().numpy()),
+                      pfe_session.get_inputs()[1].name: (voxel_num_points.data.cpu().numpy()),
+                      pfe_session.get_inputs()[2].name: (coords.data.cpu().numpy())}
+        pfe_outs = pfe_session.run(None, pfe_inputs)
+        print('-------------------------- PFE ONNX Outputs ----------------------------')
+        print(pfe_outs[0])
+        print('------------------------- PFE Pytorch Outputs ---------------------------')
+        torch_output = model(input)
+        print(torch_output[0].cpu().detach().numpy())
+        print("PFE mean error:", np.mean(pfe_outs[0] - torch_output.cpu().detach().numpy()))
+        print("PFE max error:",  np.max(np.abs((pfe_outs[0] - torch_output.cpu().detach().numpy()))))
+        # print('------------------------- PP ANCHOR TensorRT ---------------------------')
+        # print("PFE mean error:", np.mean(pfe_outs[0] - torch_output.cpu().detach().numpy()))
+        # print("PFE max error:",
+        #       np.max(np.abs((pfe_outs[0] - torch_output.cpu().detach().numpy()))))
 
-    logger.info('Demo done.')
+        ############### EXPORT  NN #################
+        # input_names = ["spatial_features"]
+        # pkl_file = open("/home/nio/Workspace/OpenPCDet/output/spatial_feats/1.pkl", 'rb')
+        # spatial_features = pickle.load(pkl_file)
+        # spatial_features = torch.from_numpy(spatial_features).cuda()
+        # spatial_features = torch.ones([1,64,496,864],dtype=torch.float32).cuda()
+        # input = [spatial_features]
+        # torch.onnx.export(model, input, "pp_anchor.onnx", verbose=True, keep_initializers_as_inputs=True,
+        # input_names=input_names,output_names = ['batch_cls_preds','batch_box_preds'],opset_version=11)
+
+        ############## PFE-Layer TensorRT #####
+        # import onnx
+        # import onnxruntime
+        # import onnx_tensorrt.backend as backend
+        # pkl_file = open("/home/nio/Workspace/OpenPCDet/output/spatial_feats/2.pkl", 'rb')
+        # spatial_features = pickle.load(pkl_file)
+        # spatial_features = torch.from_numpy(spatial_features).cuda()
+        # input = [spatial_features]
+        # logger.info('Demo done.')
+        # pp_anchor = onnxruntime.InferenceSession("pp_anchor_sim.onnx")
+        # pp_anchor_inputs = {pp_anchor.get_inputs()[0].name: (spatial_features.data.cpu().numpy())}
+        # pp_anchor_outs = pp_anchor.run(None, pp_anchor_inputs)
+        # print('-------------------------- PP ANCHOR ONNX Outputs ----------------------------')
+        # print(pp_anchor_outs[0])
+        # print(pp_anchor_outs[1])
+        # print('------------------------- PP ANCHOR Pytorch Outputs ---------------------------')
+        # torch_output = model(input)
+        # print(torch_output[0].cpu().detach().numpy())
+        # print(torch_output[1].cpu().detach().numpy())
+        # print("PP ANCHOR mean error:", np.mean(pp_anchor_outs[0] - torch_output[0].cpu().detach().numpy())," | ",
+        #                          np.mean(pp_anchor_outs[1] - torch_output[1].cpu().detach().numpy()) )
+        # print("PP ANCHOR max error:",
+        #       np.max(np.abs((pp_anchor_outs[0] - torch_output[0].cpu().detach().numpy()))), " | ",
+        #       np.max(np.abs((pp_anchor_outs[1] - torch_output[1].cpu().detach().numpy()))))
+        # print('------------------------- PP ANCHOR TensorRT ---------------------------')
+        # pp_onnx = onnx.load("pp_anchor_trim.onnx")
+        # engine = backend.prepare(pp_onnx, device="CUDA:0", max_batch_size=1)
+        # rpn_start_time = time.time()
+        # pp_output = engine.run(spatial_features.data.cpu().numpy())
+        # rpn_end_time = time.time()
+        # print(rpn_end_time - rpn_start_time)
 
 
 if __name__ == '__main__':

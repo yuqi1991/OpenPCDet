@@ -73,3 +73,31 @@ class AnchorHeadSingle(AnchorHeadTemplate):
             data_dict['cls_preds_normalized'] = False
 
         return data_dict
+
+    def export_onnx(self,spatial_features_2d):
+
+        cls_preds = self.conv_cls(spatial_features_2d)
+        box_preds = self.conv_box(spatial_features_2d)
+
+        cls_preds = cls_preds.permute(0, 2, 3, 1).contiguous()  # [N, H, W, C]
+        box_preds = box_preds.permute(0, 2, 3, 1).contiguous()  # [N, H, W, C]
+
+        self.forward_ret_dict['cls_preds'] = cls_preds
+        self.forward_ret_dict['box_preds'] = box_preds
+
+        if self.conv_dir_cls is not None:
+            dir_cls_preds = self.conv_dir_cls(spatial_features_2d)
+            dir_cls_preds = dir_cls_preds.permute(0, 2, 3, 1).contiguous()
+            self.forward_ret_dict['dir_cls_preds'] = dir_cls_preds
+        else:
+            dir_cls_preds = None
+
+        batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(
+            batch_size=1,
+            cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
+        )
+            # data_dict['batch_cls_preds'] = batch_cls_preds
+            # data_dict['batch_box_preds'] = batch_box_preds
+            # data_dict['cls_preds_normalized'] = False
+
+        return [batch_cls_preds,batch_box_preds]

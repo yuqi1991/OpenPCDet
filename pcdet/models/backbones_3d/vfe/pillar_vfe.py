@@ -92,7 +92,7 @@ class PillarVFE(VFETemplate):
         return paddings_indicator
 
     def forward(self, batch_dict, **kwargs):
-  
+
         voxel_features, voxel_num_points, coords = batch_dict['voxels'], batch_dict['voxel_num_points'], batch_dict['voxel_coords']
         points_mean = voxel_features[:, :, :3].sum(dim=1, keepdim=True) / voxel_num_points.type_as(voxel_features).view(-1, 1, 1)
         f_cluster = voxel_features[:, :, :3] - points_mean
@@ -121,3 +121,26 @@ class PillarVFE(VFETemplate):
         features = features.squeeze()
         batch_dict['pillar_features'] = features
         return batch_dict
+
+    def export_forward(self, voxel_features, voxel_num_points, coords):
+        points_mean = voxel_features[:, :, :3].sum(dim=1, keepdim=True) / voxel_num_points.float().view(-1, 1, 1)
+        f_cluster = voxel_features[:, :, :3] - points_mean
+
+        f_center = torch.zeros_like(voxel_features[:, :, :3]).float()
+        f_center[:, :, 0] = voxel_features[:, :, 0] - (coords[:, 3].to(voxel_features.dtype).unsqueeze(1) * self.voxel_x + self.x_offset).expand(-1,64)
+        f_center[:, :, 1] = voxel_features[:, :, 1] - (coords[:, 2].to(voxel_features.dtype).unsqueeze(1) * self.voxel_y + self.y_offset).expand(-1,64)
+        f_center[:, :, 2] = voxel_features[:, :, 2] - (coords[:, 1].to(voxel_features.dtype).unsqueeze(1) * self.voxel_z + self.z_offset).expand(-1,64)
+
+
+        features = [voxel_features, f_cluster, f_center]
+
+        features = torch.cat(features, dim=2)
+
+        voxel_count = int(features.shape[1])
+        mask = self.get_paddings_indicator(voxel_num_points, voxel_count, axis=0)
+        mask = mask.unsqueeze(2).float()
+        features *= mask
+        for pfn in self.pfn_layers:
+            features = pfn(features)
+        features = features.squeeze(1)
+        return features

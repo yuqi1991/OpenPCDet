@@ -1,8 +1,7 @@
 import argparse
-import glob
+import glob,time
 from pathlib import Path
-from collections import namedtuple
-# import mayavi.mlab as mlab
+import tensorrt as trt
 import numpy as np
 import torch
 
@@ -10,25 +9,23 @@ from pcdet.config import cfg, cfg_from_yaml_file
 from pcdet.datasets import DatasetTemplate
 from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
-# from visual_utils import visualize_utils as V
-
 
 import sys
 
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
 sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
-sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
+# sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
 
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list
+from nio_msgs.msg import PerceptionObject,PerceptionObjects
 from visualization_msgs.msg import Marker, MarkerArray
 import ros_numpy
 
 from AB3DMOT_libs.model import AB3DMOT
 from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
 
-from lidar_perception.msg import PerceptionObjects,PerceptionObject
 
 class_colors = {
     1:(1.0, 0., 0.),
@@ -105,6 +102,7 @@ class Visualizer(object):
         is_tracked = pred_dict.shape[1] == 10
         markerArray = MarkerArray()
         percep_objs = PerceptionObjects()
+        percep_objs.header.frame_id = "lidar"
         percep_objs.header.stamp = stamp
 
         for i in range(obj_size):
@@ -113,13 +111,16 @@ class Visualizer(object):
             marker.header.frame_id = "lidar"
             marker.type = marker.CUBE
             marker.action = marker.ADD
-            marker.id = i
-            per_obj.id = i
             if is_tracked:
                 marker.id = int(pred_dict[i][7])
                 per_obj.id = int(pred_dict[i][7])
+                label = int(pred_dict[i][9])
+            else:
+                marker.id = i
+                per_obj.id = i
+                label = int(pred_dict[i][8])
             marker.color.a = 1.0
-            label = pred_dict[i][9]
+
             marker.color.r = class_colors[label][0]
             marker.color.g = class_colors[label][1]
             marker.color.b = class_colors[label][2]
@@ -145,13 +146,15 @@ class Visualizer(object):
             per_obj.position.x = pred_dict[i][0]
             per_obj.position.y = pred_dict[i][1]
             per_obj.position.z = pred_dict[i][2]
+            per_obj.velocity.x = 0.0
+            per_obj.velocity.y = 0.0
+            per_obj.velocity.z = 0.0
             per_obj.heading = pred_dict[i][3]
             per_obj.type = label
             percep_objs.objects.append(per_obj)
 
         self.publisher_marks.publish(markerArray)
         self.publisher_objs.publish(percep_objs)
-
 
 class Inference:
     def __init__(self,args,cfg,logger,demo_dataset):
@@ -166,6 +169,7 @@ class Inference:
         pcd_topic = "/sensing/lidar/combined_point_cloud"
         self.subcriber = rospy.Subscriber(pcd_topic, PointCloud2, self.callback)
         self.frame_id = 0
+
 
     def remap_result(self,pred_dicts, score_threadhold = 0.4):
         scores = pred_dicts[0]['pred_scores'].cpu().numpy()
@@ -251,7 +255,7 @@ def main():
     infer = Inference(args,cfg,logger,demo_dataset)
 
     while not rospy.is_shutdown():
-        rospy.sleep(0.01)
+        rospy.sleep(0.05)
 
 
 if __name__ == '__main__':

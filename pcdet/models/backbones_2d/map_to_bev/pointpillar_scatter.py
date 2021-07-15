@@ -35,3 +35,26 @@ class PointPillarScatter(nn.Module):
         batch_spatial_features = batch_spatial_features.view(batch_size, self.num_bev_features * self.nz, self.ny, self.nx)
         batch_dict['spatial_features'] = batch_spatial_features
         return batch_dict
+
+    def export_forward(self,pillar_features, coords):
+        batch_spatial_features = []
+        batch_size = 1
+
+        spatial_feature = torch.zeros(
+            self.num_bev_features,
+            self.nz * self.nx * self.ny,
+            dtype=pillar_features.dtype,
+            device=pillar_features.device)
+
+        # batch_mask = coords[:, 0] == 0
+        this_coords = coords
+        indices = this_coords[:, 1] + this_coords[:, 2] * self.nx + this_coords[:, 3]
+        indices = indices.type(torch.long)
+        pillars = pillar_features
+        pillars = pillars.t()
+        spatial_feature[:, indices] = pillars
+        batch_spatial_features.append(spatial_feature)
+
+        batch_spatial_features = torch.stack(batch_spatial_features, 0)
+        batch_spatial_features = batch_spatial_features.view(batch_size, self.num_bev_features * self.nz, self.ny, self.nx)
+        return batch_spatial_features
