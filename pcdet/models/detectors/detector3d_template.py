@@ -281,6 +281,56 @@ class Detector3DTemplate(nn.Module):
 
         return pred_dicts, recall_dict
 
+    def post_processing_export(self, batch_cls_preds,batch_box_preds,):
+        """
+        Args:
+            batch_dict:
+                batch_size:
+                batch_cls_preds: (B, num_boxes, num_classes | 1) or (N1+N2+..., num_classes | 1)
+                                or [(B, num_boxes, num_class1), (B, num_boxes, num_class2) ...]
+                multihead_label_mapping: [(num_class1), (num_class2), ...]
+                batch_box_preds: (B, num_boxes, 7+C) or (N1+N2+..., 7+C)
+                cls_preds_normalized: indicate whether batch_cls_preds is normalized
+                batch_index: optional (N1+N2+...)
+                has_class_labels: True/False
+                roi_labels: (B, num_rois)  1 .. num_classes
+                batch_pred_labels: (B, num_boxes, 1)
+        Returns:
+
+        """
+        post_process_cfg = self.model_cfg.POST_PROCESSING
+        batch_size = 0
+        recall_dict = {}
+        pred_dicts = []
+
+        box_preds = batch_box_preds
+        src_box_preds = box_preds
+
+
+        cls_preds = batch_cls_preds
+
+        src_cls_preds = cls_preds
+        cls_preds = torch.sigmoid(cls_preds)  #keep
+
+
+
+        cls_preds, label_preds = torch.max(cls_preds, dim=-1)
+
+        label_preds = label_preds + 1
+        selected, selected_scores = model_nms_utils.class_agnostic_nms(
+            box_scores=cls_preds, box_preds=box_preds,
+            nms_config=post_process_cfg.NMS_CONFIG,
+            score_thresh=post_process_cfg.SCORE_THRESH
+        )
+
+
+        final_scores = selected_scores
+        final_labels = label_preds[selected]
+        final_boxes = box_preds[selected]
+
+
+        return [final_boxes,final_scores,final_labels]
+
     @staticmethod
     def generate_recall_record(box_preds, recall_dict, batch_index, data_dict=None, thresh_list=None):
         if 'gt_boxes' not in data_dict:
