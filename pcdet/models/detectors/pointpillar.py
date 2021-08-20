@@ -32,6 +32,7 @@ class PointPillar(Detector3DTemplate):
         # voxel_num_points = input[1]
         # coords = input[2]
         # pillar_features = self.vfe.export_forward(voxel_features,voxel_num_points,coords)
+        # return pillar_features
         # spatial_features = self.scatter.export_forward(pillar_features,coords)
         # # spatial_features = spatial_features[0]
         # spatial_feat_2d = self.backbone.export_forward(spatial_features)

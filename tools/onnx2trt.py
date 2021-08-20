@@ -39,10 +39,10 @@ def build_engine(onnx_path, using_half,engine_file,dynamic_input=None):
         print('save trt engine success!!')
 
 if __name__ == '__main__':
-    onnx_path='all_sim.onnx'
+    onnx_path='pfe.onnx'
     usinghalf=True
     batch_size=1
-    engine_file='pointpillar.engine'
+    engine_file='pfe.engine'
 
     #input name: min_shape, opt_shape, max_shape
     pfe_input_dict = {

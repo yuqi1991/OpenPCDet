@@ -1,7 +1,8 @@
 import argparse
 import glob,time
 from pathlib import Path
-import tensorrt as trt
+import cyber_lidar_frame
+
 import numpy as np
 import torch
 
@@ -11,20 +12,19 @@ from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
 
 import sys
+sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
 
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
-# sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
+from google.protobuf import text_format
+from python_wrapper import cyber,cyber_time
+from point_cloud_pb2 import LidarRaw
+from visual_utils.cyber_visualizer import Visualizer as CyberVisualizer
+from visual_utils.ros_visualizer import Visualizer as RosVisualizer
 
-import rospy
-from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list
-
-import ros_numpy
 
 from AB3DMOT_libs.model import AB3DMOT
 from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
 
-from visual_utils.ros_visualizer import Visualizer as RosVisualizer
+import rospy
 
 class DemoDataset(DatasetTemplate):
     def __init__(self, dataset_cfg, class_names, training=True, root_path=None, logger=None, ext='.bin'):
@@ -75,23 +75,25 @@ class DemoDataset(DatasetTemplate):
 
 
 
-
 class Inference:
-    def __init__(self,args,cfg,logger,demo_dataset):
+    def __init__(self,args,cfg,logger,demo_dataset,cyber_node):
         self.model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=demo_dataset)
         self.model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=True)
         self.model.cuda()
         self.model.eval()
-        self.vis = RosVisualizer()
+        self.vis = CyberVisualizer(cyber_node)
+        self.ros_vis = RosVisualizer()
         self.tracker = AB3DMOT()
         self.demo_dataset = demo_dataset
         self.logger = logger
-        pcd_topic = "/sensing/lidar/combined_point_cloud"
-        self.subcriber = rospy.Subscriber(pcd_topic, PointCloud2, self.callback)
+        pcd_topic = "/sensing/lidar/combined"
+        self.subcriber = cyber_node.create_reader(pcd_topic, LidarRaw, self.callback)
         self.frame_id = 0
+        self.input_queue = list()
 
 
-    def remap_result(self,pred_dicts, score_threadhold = 0.4):
+
+    def remap_result(self,pred_dicts, score_threadhold = 0.5):
         scores = pred_dicts[0]['pred_scores'].cpu().numpy()
         valids = scores > score_threadhold
         labels = pred_dicts[0]['pred_labels'].cpu().numpy()[valids]
@@ -121,29 +123,34 @@ class Inference:
         points[...,3] = cloud_array['intensity']
         return points
 
-    def callback(self,data):
-        start = rospy.Time.now()
-        pc_np = self.get_xyzi_points(ros_numpy.point_cloud2.pointcloud2_to_array(data), remove_nans=True).astype(np.float32)
-        pc_np[:,2] -= 0.5
-        pc_np = pc_np[pc_np[:,2] > -1.4]
-        pc_np[:,3] = pc_np[:,3]/255.0
+    def infer(self,data):
+        start_inf = cyber_time.Time.now()
+        timestamp = cyber_lidar_frame.get_time_stamp(data.raw_data)
+        pc_np = np.array(cyber_lidar_frame.point_cloud_to_array(data.raw_data))
+
+        pc_np[:,2] += 0.2
+        pc_np = pc_np[pc_np[:,2] > -1.9]
+
+        self.ros_vis.pub_pc(pc_np,timestamp)
+        pc_np = np.insert(pc_np,3,values= np.zeros((1,pc_np.shape[0])),axis=1)
 
         with torch.no_grad():
             data_dict = self.demo_dataset.get_data(self.frame_id,pc_np)
-            self.frame_id +=1
             data_dict = self.demo_dataset.collate_batch([data_dict])
             load_data_to_gpu(data_dict)
-            start_inf = rospy.Time.now()
+
             pred_dicts, _ = self.model.forward(data_dict)
-            end_inf = rospy.Time.now().to_sec() - start_inf.to_sec()
             all_dets = self.remap_result(pred_dicts)
-            start_track = rospy.Time.now()
-            all_dets = self.tracker.update(all_dets)
-            end_track = rospy.Time.now().to_sec() - start_track.to_sec()
-            self.vis.pub(all_dets,data.header.stamp)
-            print("whole inference done: {}s, track time: {}s".format(end_inf, end_track))
+
+            self.vis.pub(all_dets,timestamp)
+            self.ros_vis.pub_obj(all_dets,timestamp)
+            end_inf = cyber_time.Time.now()
+            print('inference time is : ', (end_inf - start_inf).to_sec())
 
 
+    def callback(self,data):
+        self.frame_id +=1
+        self.input_queue.append(data)
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
@@ -169,13 +176,19 @@ def main():
         dataset_cfg=cfg.DATA_CONFIG, class_names=cfg.CLASS_NAMES, training=False,
         root_path=Path(args.data_path), ext=args.ext, logger=logger
     )
+
     logger.info(f'Total number of samples: \t{len(demo_dataset)}')
-    rospy.init_node("inference")
+    cyber.init()
+    perception_node = cyber.Node("perception")
 
-    infer = Inference(args,cfg,logger,demo_dataset)
+    rospy.init_node("perception")
 
-    while not rospy.is_shutdown():
-        rospy.sleep(0.05)
+    infer = Inference(args,cfg,logger,demo_dataset,perception_node)
+
+    while not cyber.is_shutdown():
+        if len(infer.input_queue) > 0:
+            infer.infer(infer.input_queue.pop(0))
+        cyber_time.Duration(0.001).sleep()
 
 
 if __name__ == '__main__':

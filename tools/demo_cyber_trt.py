@@ -1,7 +1,9 @@
 import argparse
 import glob,time
 from pathlib import Path
+import cyber_lidar_frame
 
+import struct
 import tensorrt as trt
 import numpy as np
 import torch
@@ -201,15 +203,15 @@ class Inference:
         self.frame_id = 0
         self.input_queue = list()
 
-        self.TRT_LOGGER = trt.Logger(trt.Logger.INFO)
-        trt.init_libnvinfer_plugins(None, '')
-        with open("pfe.engine", "rb") as f, trt.Runtime(self.TRT_LOGGER) as runtime:
-            self.trt_pfe_engine=runtime.deserialize_cuda_engine(f.read())
-            self.pfe_context = self.trt_pfe_engine.create_execution_context()
-
-        with open("pp_anchor.engine", "rb") as f, trt.Runtime(self.TRT_LOGGER) as runtime:
-            self.trt_pp_engine=runtime.deserialize_cuda_engine(f.read())
-            self.pp_context = self.trt_pp_engine.create_execution_context()
+        # self.TRT_LOGGER = trt.Logger(trt.Logger.INFO)
+        # trt.init_libnvinfer_plugins(None, '')
+        # with open("pfe.engine", "rb") as f, trt.Runtime(self.TRT_LOGGER) as runtime:
+        #     self.trt_pfe_engine=runtime.deserialize_cuda_engine(f.read())
+        #     self.pfe_context = self.trt_pfe_engine.create_execution_context()
+        #
+        # with open("pp_anchor.engine", "rb") as f, trt.Runtime(self.TRT_LOGGER) as runtime:
+        #     self.trt_pp_engine=runtime.deserialize_cuda_engine(f.read())
+        #     self.pp_context = self.trt_pp_engine.create_execution_context()
 
         # pfe_model = onnx.load("pfe.onnx")
         # self.pfe_engine = backend.prepare(pfe_model, device="CUDA:0",max_workspace_size=4<<30)
@@ -250,6 +252,7 @@ class Inference:
 
     def infer(self,pfe_inputs):
         pfe_start_time = time.time()
+
         shapes = [data.shape for data in pfe_inputs]
         voxel_num = pfe_inputs[0].shape[0]
         shapes.append((voxel_num,4))
@@ -282,11 +285,13 @@ class Inference:
 
     def callback(self,data):
         start = cyber_time.Time.now()
+        pc_np = np.array(cyber_lidar_frame.point_cloud_to_array(data.raw_data))
+        pc_np = np.insert(pc_np,3,values= np.zeros((1,pc_np.shape[0])),axis=1)
         # pc_np = self.get_xyzi_points(ros_numpy.point_cloud2.pointcloud2_to_array(data), remove_nans=True).astype(np.float32)
-        pc_np = np.array(0)
+        # pc_np = np.array(0)
         pc_np[:,2] -= 0.5
         pc_np = pc_np[pc_np[:,2] > -1.4]
-        pc_np[:,3] = pc_np[:,3]/255.0
+        # pc_np[:,3] = pc_np[:,3]/255.0
 
         with torch.no_grad():
             data_dict = self.demo_dataset.get_data(self.frame_id,pc_np)
@@ -298,7 +303,7 @@ class Inference:
             coords = data_dict['voxel_coords'].astype(np.float32)
             pfe_inputs = [voxel_features,voxel_num_points,coords]
             # self.infer(pfe_inputs)
-            self.input_queue.append(pfe_inputs)
+        self.input_queue.append(pfe_inputs)
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')

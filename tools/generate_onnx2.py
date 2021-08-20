@@ -119,7 +119,7 @@ def main():
         # ############### EXPORT  PFE #################
         torch.onnx.export(model, input, "pfe.onnx", verbose=True, input_names=input_names,keep_initializers_as_inputs=True,
                           do_constant_folding=True,
-                          output_names = ['batch_cls_preds','batch_box_preds'],opset_version=11,
+                          output_names = ['pfe_feats'],opset_version=11,
                           dynamic_axes={
                               "voxel_features":{0:"voxel_num"},
                               "voxel_num_points":{0:"voxel_num"},
