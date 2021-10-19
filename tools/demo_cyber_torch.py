@@ -92,8 +92,7 @@ class Inference:
         self.input_queue = list()
 
 
-
-    def remap_result(self,pred_dicts, score_threadhold = 0.5):
+    def remap_result(self,pred_dicts, score_threadhold = 0.45):
         scores = pred_dicts[0]['pred_scores'].cpu().numpy()
         valids = scores > score_threadhold
         labels = pred_dicts[0]['pred_labels'].cpu().numpy()[valids]
@@ -106,32 +105,17 @@ class Inference:
         other_info = np.concatenate([scores[:,np.newaxis],labels[:,np.newaxis]],axis=1)
         return np.concatenate([dets,other_info],axis=1)
 
-    def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=np.float):
-        '''Pulls out x, y, and z columns from the cloud recordarray, and returns
-        a 3xN matrix.
-        '''
-        # remove crap points
-        if remove_nans:
-            mask = np.isfinite(cloud_array['x']) & np.isfinite(cloud_array['y']) & np.isfinite(cloud_array['z']) & np.isfinite(cloud_array['intensity'])
-            cloud_array = cloud_array[mask]
-
-        # pull out x, y, and z values
-        points = np.zeros(cloud_array.shape + (4,), dtype=dtype)
-        points[...,0] = cloud_array['x']
-        points[...,1] = cloud_array['y']
-        points[...,2] = cloud_array['z']
-        points[...,3] = cloud_array['intensity']
-        return points
 
     def infer(self,data):
         start_inf = cyber_time.Time.now()
         timestamp = cyber_lidar_frame.get_time_stamp(data.raw_data)
         pc_np = np.array(cyber_lidar_frame.point_cloud_to_array(data.raw_data))
+        pc_np = pc_np[pc_np[:,2] !=0.0]
+        pc_np[:,2] += 0.4
+        pc_np = pc_np[pc_np[:,2] > -1.5]
 
-        pc_np[:,2] += 0.2
-        pc_np = pc_np[pc_np[:,2] > -1.9]
 
-        self.ros_vis.pub_pc(pc_np,timestamp)
+        # self.ros_vis.pub_pc(pc_np,timestamp)
         pc_np = np.insert(pc_np,3,values= np.zeros((1,pc_np.shape[0])),axis=1)
 
         with torch.no_grad():
@@ -143,7 +127,7 @@ class Inference:
             all_dets = self.remap_result(pred_dicts)
 
             self.vis.pub(all_dets,timestamp)
-            self.ros_vis.pub_obj(all_dets,timestamp)
+            # self.ros_vis.pub_obj(all_dets,timestamp)
             end_inf = cyber_time.Time.now()
             print('inference time is : ', (end_inf - start_inf).to_sec())
 
