@@ -66,7 +66,7 @@ class DRDataset(DatasetTemplate):
         lidar_file = self.root_split_path / 'pointcloud' / ('%s.bin' % idx)
         assert lidar_file.exists()
         points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
-        points = points[points[:,2] > -1.4]
+        # points = points[points[:,2] > -1.4]
         return points
 
     def get_image(self, idx):
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
     create_dr_infos(
         dataset_cfg=dataset_cfg,
-        class_names=['CAR', 'PEDESTRIAN', 'CYCLIST'],
+        class_names=['CAR','TRUCK','BUS', 'PEDESTRIAN', 'CYCLIST','CYCLIST','CONE'],
         data_path=ROOT_DIR / 'data' / 'dr',
         save_path=ROOT_DIR / 'data' / 'dr'
     )
