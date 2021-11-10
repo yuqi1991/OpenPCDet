@@ -147,6 +147,11 @@ MODEL:
             },
         ]
 
+        SEPARATE_REG_CONFIG:
+          NUM_MIDDLE_CONV: 1
+          NUM_MIDDLE_FILTER: 64
+          REG_LIST: ['reg:2', 'height:1', 'size:3', 'angle:1']
+
         TARGET_ASSIGNER_CONFIG:
           NAME: AxisAlignedTargetAssigner
           POS_FRACTION: -1.0
@@ -154,6 +159,10 @@ MODEL:
           NORM_BY_NUM_EXAMPLES: False
           MATCH_HEIGHT: False
           BOX_CODER: ResidualCoder
+          BOX_CODER_CONFIG: {
+            'code_size': 7,
+            'encode_angle_by_sincos': False
+          }
 
         LOSS_CONFIG:
           LOSS_WEIGHTS: {
