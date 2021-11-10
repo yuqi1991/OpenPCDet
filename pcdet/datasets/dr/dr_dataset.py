@@ -9,6 +9,27 @@ from pcdet.ops.roiaware_pool3d import roiaware_pool3d_utils
 from pcdet.utils import box_utils, calibration_kitti, common_utils, object3d_kitti
 from pcdet.datasets.dataset import DatasetTemplate
 
+dr_class_map = {
+    "CAR":"CAR",
+    "VAN":"VAN",
+    "VAN_HARD":"VAN",
+    "TRUCK":"TRUCK",
+    "BIG_TRUCK":"TRUCK",
+    "TRUCK_HARD":"TRUCK",
+    "BUS":"BUS",
+    "BUS_HARD":"BUS",
+    "PEDESTRIAN":"PEDESTRIAN",
+    "CYCLIST":"CYCLIST",
+    "TRICYCLE":"TRICYCLE",
+    "MOTORIST":"CYCLIST",
+    "TRICYCLE":"TRICYCLE",
+    "TRICYCLE_HARD":"TRICYCLE",
+    "CAR_HARD":"CAR",
+    "PEDESTRIAN_HARD":"PEDESTRIAN",
+    "CYCLIST_HARD":"CYCLIST",
+    "MOTORIST_HARD":"CYCLIST",
+    "CONE":"TRAFFIC_CONE",
+}
 
 class DRDataset(DatasetTemplate):
     def __init__(self, dataset_cfg, class_names, training=True, root_path=None, logger=None):
@@ -181,7 +202,7 @@ class DRDataset(DatasetTemplate):
             if has_label:
                 obj_list = self.get_label(sample_idx)
                 annotations = {}
-                annotations['name'] = np.array([obj['type'] for obj in obj_list])
+                annotations['name'] = np.array([dr_class_map[obj['type']] for obj in obj_list])
                 # annotations['truncated'] = np.array([obj.truncation for obj in obj_list])
                 # annotations['occluded'] = np.array([obj.occlusion for obj in obj_list])
                 # annotations['alpha'] = np.array([obj.alpha for obj in obj_list])
@@ -194,7 +215,8 @@ class DRDataset(DatasetTemplate):
                 # annotations['score'] = np.array([obj.score for obj in obj_list])
                 # annotations['difficulty'] = np.array([obj.level for obj in obj_list], np.int32)
 
-                num_objects = len([obj['type'] for obj in obj_list if obj['type'] != 'DontCare'])
+                num_objects = len([dr_class_map[obj['type']] for obj in obj_list
+                                   if dr_class_map[obj['type']] != 'DontCare'])
                 num_gt = len(obj_list)
                 index = list(range(num_objects)) + [-1] * (num_gt - num_objects)
                 annotations['index'] = np.array(index, dtype=np.int32)
@@ -208,7 +230,8 @@ class DRDataset(DatasetTemplate):
                     gt_boxes_lidar = np.concatenate([loc_lidar, l, w, h, rots[..., np.newaxis]], axis=1)
                     annotations['gt_boxes_lidar'] = gt_boxes_lidar
                 else:
-                    annotations['gt_boxes_lidar'] = np.empty([1,7])
+                    # annotations['gt_boxes_lidar'] = np.empty([1,7])
+                    annotations['gt_boxes_lidar'] = np.ndarray(0)
 
                 info['annos'] = annotations
 
@@ -473,9 +496,9 @@ def create_dr_infos(dataset_cfg, class_names, data_path, save_path, workers=12):
     print('DR info trainval file is saved to %s' % trainval_filename)
 
     dataset.set_split('test')
-    kitti_infos_test = dataset.get_infos(num_workers=workers, has_label=False, count_inside_pts=False)
+    dr_infos_test = dataset.get_infos(num_workers=workers, has_label=False, count_inside_pts=False)
     with open(test_filename, 'wb') as f:
-        pickle.dump(kitti_infos_test, f)
+        pickle.dump(dr_infos_test, f)
     print('DR info test file is saved to %s' % test_filename)
 
     print('---------------Start create groundtruth database for data augmentation---------------')
@@ -493,6 +516,7 @@ if __name__ == '__main__':
     from easydict import EasyDict
     dataset_cfg = EasyDict(yaml.load(open(sys.argv[1])))
     ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
+
     create_dr_infos(
         dataset_cfg=dataset_cfg,
         class_names=['CAR','TRUCK','BUS', 'PEDESTRIAN', 'CYCLIST','CYCLIST','CONE'],
