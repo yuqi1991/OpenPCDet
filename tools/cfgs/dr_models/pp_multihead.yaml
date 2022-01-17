@@ -3,7 +3,7 @@ CLASS_NAMES: ['CAR', 'VAN', 'PEDESTRIAN', 'CYCLIST','TRUCK','TRAFFIC_CONE','BUS'
 DATA_CONFIG:
     _BASE_CONFIG_: cfgs/dataset_configs/dr_dataset.yaml
 
-    POINT_CLOUD_RANGE: [-69.12, -39.68, -3, 69.12, 39.68, 1]
+    POINT_CLOUD_RANGE: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
     DATA_PROCESSOR:
         -   NAME: mask_points_and_boxes_outside_range
             REMOVE_OUTSIDE_BOXES: True
@@ -11,15 +11,15 @@ DATA_CONFIG:
         -   NAME: shuffle_points
             SHUFFLE_ENABLED: {
                 'train': True,
-                'test': False
+                'test': True
             }
 
         - NAME: transform_points_to_voxels
-          VOXEL_SIZE: [0.16, 0.16, 4]
-          MAX_POINTS_PER_VOXEL: 64
+          VOXEL_SIZE: [0.2, 0.2, 8.0]
+          MAX_POINTS_PER_VOXEL: 20
           MAX_NUMBER_OF_VOXELS: {
-              'train': 16000,
-              'test': 40000
+            'train': 30000,
+            'test': 30000
           }
 
 MODEL:
@@ -41,7 +41,7 @@ MODEL:
         LAYER_NUMS: [3, 5, 5]
         LAYER_STRIDES: [2, 2, 2]
         NUM_FILTERS: [64, 128, 256]
-        UPSAMPLE_STRIDES: [1, 2, 4]
+        UPSAMPLE_STRIDES: [0.5, 1, 2]
         NUM_UPSAMPLE_FILTERS: [128, 128, 128]
 
     DENSE_HEAD:
@@ -57,71 +57,71 @@ MODEL:
         ANCHOR_GENERATOR_CONFIG: [
             {
                 'class_name': 'CAR',
-                'anchor_sizes': [[3.9, 1.6, 1.56]],
+                'anchor_sizes': [[4.63, 1.97, 1.74]],
                 'anchor_rotations': [0, 1.57],
-                'anchor_bottom_heights': [-1.78],
+                'anchor_bottom_heights': [-0.95],
                 'align_center': False,
-                'feature_map_stride': 2,
+                'feature_map_stride': 4,
                 'matched_threshold': 0.6,
                 'unmatched_threshold': 0.45
             },
             {
                 'class_name': 'VAN',
-                'anchor_sizes': [ [ 3.9, 1.6, 1.56 ] ],
-                'anchor_rotations': [ 0, 1.57 ],
-                'anchor_bottom_heights': [ -1.78 ],
-                'align_center': False,
-                'feature_map_stride': 2,
-                'matched_threshold': 0.6,
-                'unmatched_threshold': 0.45
-            },
-            {
-                'class_name': 'TRAFFIC_CONE',
-                'anchor_sizes': [ [ 0.2, 0.2, 0.4 ] ],
-                'anchor_rotations': [ 0, 1.57 ],
-                'anchor_bottom_heights': [ -1.78 ],
-                'align_center': False,
-                'feature_map_stride': 2,
-                'matched_threshold': 0.6,
-                'unmatched_threshold': 0.45
-            },
-            {
-                'class_name': 'TRUCK',
-                'anchor_sizes': [ [ 10, 3, 3 ] ],
-                'anchor_rotations': [ 0, 1.57 ],
-                'anchor_bottom_heights': [ -1.78 ],
-                'align_center': False,
-                'feature_map_stride': 2,
-                'matched_threshold': 0.6,
-                'unmatched_threshold': 0.45
-            },
-            {
-                'class_name': 'BUS',
-                'anchor_sizes': [ [ 10, 3, 3 ] ],
-                'anchor_rotations': [ 0, 1.57 ],
-                'anchor_bottom_heights': [ -1.78 ],
-                'align_center': False,
-                'feature_map_stride': 2,
-                'matched_threshold': 0.6,
-                'unmatched_threshold': 0.45
-            },
-            {
-                'class_name': 'PEDESTRIAN',
-                'anchor_sizes': [[0.8, 0.6, 1.73]],
+                'anchor_sizes': [[6.37, 2.85, 3.19]],
                 'anchor_rotations': [0, 1.57],
-                'anchor_bottom_heights': [-0.6],
+                'anchor_bottom_heights': [-0.225],
                 'align_center': False,
-                'feature_map_stride': 2,
+                'feature_map_stride': 4,
                 'matched_threshold': 0.5,
                 'unmatched_threshold': 0.35
             },
             {
-                'class_name': 'CYCLIST',
-                'anchor_sizes': [[1.76, 0.6, 1.73]],
+                'class_name': 'TRAFFIC_CONE',
+                'anchor_sizes': [[0.41, 0.41, 1.07]],
+                'anchor_rotations': [0, 1.57],
+                'anchor_bottom_heights': [-1.285],
+                'align_center': False,
+                'feature_map_stride': 4,
+                'matched_threshold': 0.6,
+                'unmatched_threshold': 0.4
+            },
+            {
+                'class_name': 'TRUCK',
+                'anchor_sizes': [[6.93, 2.51, 2.84]],
                 'anchor_rotations': [0, 1.57],
                 'anchor_bottom_heights': [-0.6],
                 'align_center': False,
-                'feature_map_stride': 2,
+                'feature_map_stride': 4,
+                'matched_threshold': 0.55,
+                'unmatched_threshold': 0.4
+            },
+            {
+                'class_name': 'BUS',
+                'anchor_sizes': [[10.5, 2.94, 3.47]],
+                'anchor_rotations': [0, 1.57],
+                'anchor_bottom_heights': [-0.085],
+                'align_center': False,
+                'feature_map_stride': 4,
+                'matched_threshold': 0.55,
+                'unmatched_threshold': 0.4
+            },
+            {
+                'class_name': 'PEDESTRIAN',
+                'anchor_sizes': [[0.73, 0.67, 1.77]],
+                'anchor_rotations': [0, 1.57],
+                'anchor_bottom_heights': [-0.935],
+                'align_center': False,
+                'feature_map_stride': 4,
+                'matched_threshold': 0.6,
+                'unmatched_threshold': 0.4
+            },
+            {
+                'class_name': 'CYCLIST',
+                'anchor_sizes': [[1.70, 0.60, 1.28]],
+                'anchor_rotations': [0, 1.57],
+                'anchor_bottom_heights': [-1.18],
+                'align_center': False,
+                'feature_map_stride': 4,
                 'matched_threshold': 0.5,
                 'unmatched_threshold': 0.35
             }
@@ -140,7 +140,10 @@ MODEL:
                 'HEAD_CLS_NAME': ['BUS','VAN'],
             },
             {
-                'HEAD_CLS_NAME': ['PEDESTRIAN', 'CYCLIST'],
+                'HEAD_CLS_NAME': ['PEDESTRIAN'],
+            },
+            {
+              'HEAD_CLS_NAME': [ 'CYCLIST' ],
             },
             {
                 'HEAD_CLS_NAME': ['TRAFFIC_CONE'],
@@ -150,7 +153,7 @@ MODEL:
         SEPARATE_REG_CONFIG:
           NUM_MIDDLE_CONV: 1
           NUM_MIDDLE_FILTER: 64
-          REG_LIST: ['reg:2', 'height:1', 'size:3', 'angle:1']
+          REG_LIST: ['reg:2', 'height:1', 'size:3', 'angle:2']
 
         TARGET_ASSIGNER_CONFIG:
           NAME: AxisAlignedTargetAssigner
@@ -161,15 +164,17 @@ MODEL:
           BOX_CODER: ResidualCoder
           BOX_CODER_CONFIG: {
             'code_size': 7,
-            'encode_angle_by_sincos': False
+            'encode_angle_by_sincos': True
           }
 
         LOSS_CONFIG:
           LOSS_WEIGHTS: {
+            'pos_cls_weight': 1.0,
+            'neg_cls_weight': 2.0,
             'cls_weight': 1.0,
             'loc_weight': 2.0,
             'dir_weight': 0.2,
-            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
           }
 
     POST_PROCESSING:
@@ -188,8 +193,8 @@ MODEL:
 
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: 2
-    NUM_EPOCHS: 30
+    BATCH_SIZE_PER_GPU: 1
+    NUM_EPOCHS: 40
 
     OPTIMIZER: adam_onecycle
     LR: 0.003

@@ -11,8 +11,8 @@ from pcdet.datasets.dataset import DatasetTemplate
 
 dr_class_map = {
     "CAR":"CAR",
-    "VAN":"VAN",
-    "VAN_HARD":"VAN",
+    "VAN":"CAR",
+    "VAN_HARD":"CAR",
     "TRUCK":"TRUCK",
     "BIG_TRUCK":"TRUCK",
     "TRUCK_HARD":"TRUCK",
@@ -20,10 +20,10 @@ dr_class_map = {
     "BUS_HARD":"BUS",
     "PEDESTRIAN":"PEDESTRIAN",
     "CYCLIST":"CYCLIST",
-    "TRICYCLE":"TRICYCLE",
+    "TRICYCLE":"CYCLIST",
     "MOTORIST":"CYCLIST",
-    "TRICYCLE":"TRICYCLE",
-    "TRICYCLE_HARD":"TRICYCLE",
+    "TRICYCLE":"CYCLIST",
+    "TRICYCLE_HARD":"CYCLIST",
     "CAR_HARD":"CAR",
     "PEDESTRIAN_HARD":"PEDESTRIAN",
     "CYCLIST_HARD":"CYCLIST",
@@ -88,6 +88,7 @@ class DRDataset(DatasetTemplate):
         assert lidar_file.exists()
         points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         # points = points[points[:,2] > -1.4]
+        points[:,3] = 0.0
         return points
 
     def get_image(self, idx):
@@ -516,10 +517,9 @@ if __name__ == '__main__':
     from easydict import EasyDict
     dataset_cfg = EasyDict(yaml.load(open(sys.argv[1])))
     ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
-
     create_dr_infos(
         dataset_cfg=dataset_cfg,
-        class_names=['CAR','TRUCK','BUS', 'PEDESTRIAN', 'CYCLIST','CYCLIST','CONE'],
+        class_names=['CAR', 'PEDESTRIAN', 'CYCLIST','TRUCK','TRAFFIC_CONE','BUS'],
         data_path=ROOT_DIR / 'data' / 'dr',
         save_path=ROOT_DIR / 'data' / 'dr'
     )

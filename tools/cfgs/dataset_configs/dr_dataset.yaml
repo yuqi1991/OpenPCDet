@@ -24,10 +24,10 @@ DATA_AUGMENTOR:
           DB_INFO_PATH:
               - dr_dbinfos_train.pkl
           PREPARE: {
-             filter_by_min_points: ['CAR:5','VAN:5', 'PEDESTRIAN:5', 'CYCLIST:5','TRAFFIC_CONE:5','TRUCK:5'],
+             filter_by_min_points: ['CAR:5', 'PEDESTRIAN:5', 'CYCLIST:5','TRAFFIC_CONE:5','TRUCK:5'],
           }
 
-          SAMPLE_GROUPS: ['CAR:20','VAN:15', 'PEDESTRIAN:15', 'CYCLIST:15','TRAFFIC_CONE:15','TRUCK:15']
+          SAMPLE_GROUPS: ['CAR:20','PEDESTRIAN:15', 'CYCLIST:15','TRAFFIC_CONE:15','TRUCK:15']
           NUM_POINT_FEATURES: 4
           DATABASE_WITH_FAKELIDAR: False
           REMOVE_EXTRA_WIDTH: [0.0, 0.0, 0.0]
@@ -45,7 +45,7 @@ DATA_AUGMENTOR:
 
 POINT_FEATURE_ENCODING: {
     encoding_type: absolute_coordinates_encoding,
-    used_feature_list: ['x', 'y', 'z', 'intensity'],
+    used_feature_list: ['x', 'y', 'z','intensity'],
     src_feature_list: ['x', 'y', 'z', 'intensity'],
 }
 

@@ -30,7 +30,7 @@ class Visualizer(object):
         self.publisher_bboxs = rospy.Publisher('/bboxes', BoundingBoxArray, queue_size=10)
         self.publisher_pc = rospy.Publisher('/pointclouds',PointCloud2,queue_size=10)
 
-    def np_to_point_cloud(self,points, timestamp,parent_frame="lidar"):
+    def np_to_point_cloud(self,points, timestamp,parent_frame="base_link"):
         """ Creates a point cloud message.
         Args:
             points: Nx3 array of xyz positions (m)
@@ -100,7 +100,7 @@ class Visualizer(object):
         timestamp = rospy.Time(stamp/1000000000)
 
         bbox_array = BoundingBoxArray()
-        bbox_array.header.frame_id = "lidar"
+        bbox_array.header.frame_id = "base_link"
         bbox_array.header.stamp=timestamp
 
         for i in range(obj_size):
@@ -110,7 +110,7 @@ class Visualizer(object):
                 label = int(pred_dict[i][8])
 
             bbox = BoundingBox()
-            bbox.header.frame_id = "lidar"
+            bbox.header.frame_id = "base_link"
             bbox.header.stamp = timestamp
             quaternion = euler_to_quaternion(pred_dict[i][3].item(),0, 0)
             bbox.pose.orientation.x = quaternion[0]

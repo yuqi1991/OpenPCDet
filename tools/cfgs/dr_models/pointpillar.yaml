@@ -1,4 +1,4 @@
-CLASS_NAMES: ['CAR', 'VAN', 'PEDESTRIAN', 'CYCLIST','TRUCK','TRAFFIC_CONE','BUS']
+CLASS_NAMES: ['CAR', 'PEDESTRIAN', 'CYCLIST','TRUCK','TRAFFIC_CONE','BUS']
 
 DATA_CONFIG: 
     _BASE_CONFIG_: cfgs/dataset_configs/dr_dataset.yaml
@@ -28,10 +28,10 @@ DATA_CONFIG:
               DB_INFO_PATH:
                   - dr_dbinfos_train.pkl
               PREPARE: {
-                 filter_by_min_points: ['CAR:5','VAN:5', 'PEDESTRIAN:5', 'CYCLIST:5','TRAFFIC_CONE:5','TRUCK:5','BUS:5'],
+                 filter_by_min_points: ['CAR:5', 'PEDESTRIAN:5', 'CYCLIST:5','TRAFFIC_CONE:5','TRUCK:5','BUS:5'],
               }
 
-              SAMPLE_GROUPS: ['CAR:15','VAN:15','PEDESTRIAN:15', 'CYCLIST:15','TRAFFIC_CONE:15','TRUCK:15','BUS:15']
+              SAMPLE_GROUPS: ['CAR:15','PEDESTRIAN:15', 'CYCLIST:15','TRAFFIC_CONE:15','TRUCK:15','BUS:15']
               NUM_POINT_FEATURES: 4
               DATABASE_WITH_FAKELIDAR: False
               REMOVE_EXTRA_WIDTH: [0.0, 0.0, 0.0]
@@ -88,16 +88,6 @@ MODEL:
                 'matched_threshold': 0.6,
                 'unmatched_threshold': 0.45
             },
-          {
-            'class_name': 'VAN',
-            'anchor_sizes': [ [ 3.9, 1.6, 1.56 ] ],
-            'anchor_rotations': [ 0, 1.57 ],
-            'anchor_bottom_heights': [ -1.78 ],
-            'align_center': False,
-            'feature_map_stride': 2,
-            'matched_threshold': 0.6,
-            'unmatched_threshold': 0.45
-          },
           {
             'class_name': 'TRAFFIC_CONE',
             'anchor_sizes': [ [ 0.2, 0.2, 0.4 ] ],
@@ -182,7 +172,7 @@ MODEL:
 
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: 2
+    BATCH_SIZE_PER_GPU: 4
     NUM_EPOCHS: 30
 
     OPTIMIZER: adam_onecycle
@@ -197,7 +187,7 @@ OPTIMIZATION:
     LR_DECAY: 0.1
     LR_CLIP: 0.0000001
 
-    LR_WARMUP: True
+    LR_WARMUP: False
     WARMUP_EPOCH: 1
 
     GRAD_NORM_CLIP: 10

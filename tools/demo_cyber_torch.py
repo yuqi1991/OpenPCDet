@@ -12,7 +12,7 @@ from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
 
 import sys
-sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
+sys.path.append("/home/nio/Workspace/common_cyber/cmake-build-release/proto/common/proto")
 
 from google.protobuf import text_format
 from python_wrapper import cyber,cyber_time
@@ -22,7 +22,7 @@ from visual_utils.ros_visualizer import Visualizer as RosVisualizer
 
 
 from AB3DMOT_libs.model import AB3DMOT
-from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
+# from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
 
 import rospy
 
@@ -73,8 +73,6 @@ class DemoDataset(DatasetTemplate):
         data_dict = self.prepare_data(data_dict=input_dict)
         return data_dict
 
-
-
 class Inference:
     def __init__(self,args,cfg,logger,demo_dataset,cyber_node):
         self.model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=demo_dataset)
@@ -83,7 +81,7 @@ class Inference:
         self.model.eval()
         self.vis = CyberVisualizer(cyber_node)
         self.ros_vis = RosVisualizer()
-        self.tracker = AB3DMOT()
+        # self.tracker = AB3DMOT()
         self.demo_dataset = demo_dataset
         self.logger = logger
         pcd_topic = "/sensing/lidar/combined"
@@ -92,7 +90,7 @@ class Inference:
         self.input_queue = list()
 
 
-    def remap_result(self,pred_dicts, score_threadhold = 0.45):
+    def remap_result(self,pred_dicts, score_threadhold = 0.5):
         scores = pred_dicts[0]['pred_scores'].cpu().numpy()
         valids = scores > score_threadhold
         labels = pred_dicts[0]['pred_labels'].cpu().numpy()[valids]
@@ -111,12 +109,12 @@ class Inference:
         timestamp = cyber_lidar_frame.get_time_stamp(data.raw_data)
         pc_np = np.array(cyber_lidar_frame.point_cloud_to_array(data.raw_data))
         pc_np = pc_np[pc_np[:,2] !=0.0]
-        pc_np[:,2] += 0.4
-        pc_np = pc_np[pc_np[:,2] > -1.5]
+        pc_np[:,2] -= 1.4
+        # pc_np = pc_np[pc_np[:,2] > -1.5]
 
 
-        # self.ros_vis.pub_pc(pc_np,timestamp)
-        pc_np = np.insert(pc_np,3,values= np.zeros((1,pc_np.shape[0])),axis=1)
+        self.ros_vis.pub_pc(pc_np,timestamp)
+        # pc_np = np.insert(pc_np,3,values= np.zeros((1,pc_np.shape[0])),axis=1)
 
         with torch.no_grad():
             data_dict = self.demo_dataset.get_data(self.frame_id,pc_np)
@@ -124,10 +122,10 @@ class Inference:
             load_data_to_gpu(data_dict)
 
             pred_dicts, _ = self.model.forward(data_dict)
-            all_dets = self.remap_result(pred_dicts)
+            all_dets = self.remap_result(pred_dicts,score_threadhold=0.40)
 
-            self.vis.pub(all_dets,timestamp)
-            # self.ros_vis.pub_obj(all_dets,timestamp)
+            # self.vis.pub(all_dets,timestamp)
+            self.ros_vis.pub_obj(all_dets,timestamp)
             end_inf = cyber_time.Time.now()
             print('inference time is : ', (end_inf - start_inf).to_sec())
 

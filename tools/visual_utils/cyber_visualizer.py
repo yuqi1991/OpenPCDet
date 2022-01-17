@@ -3,7 +3,7 @@ from perception_object_pb2 import PerceptionObjects,PerceptionObject
 
 class Visualizer(object):
     def __init__(self,cyber_node):
-        self.publisher_objs = cyber_node.create_writer("/perception/objects",PerceptionObjects,1)
+        self.publisher_objs = cyber_node.create_writer("/perception/torch_objects",PerceptionObjects,1)
 
     def pub(self,pred_dict,stamp):
         obj_size = pred_dict.shape[0]
