@@ -26,7 +26,7 @@ DATA_CONFIG:
             - NAME: gt_sampling
               USE_ROAD_PLANE: False
               DB_INFO_PATH:
-                  - dr_dbinfos_train.pkl
+                  - once_dbinfos_train.pkl
               PREPARE: {
                  filter_by_min_points: ['CAR:5', 'PEDESTRIAN:5', 'CYCLIST:5','TRAFFIC_CONE:5','TRUCK:5','BUS:5'],
               }
