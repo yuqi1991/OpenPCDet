@@ -2,9 +2,9 @@ import numpy as np
 import rospy
 from std_msgs.msg import String,Header
 from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list,PointField
-from nio_msgs.msg import PerceptionObject,PerceptionObjects
-from perception_object_pb2 import PerceptionObjects as ProtoPerceptionObjects
-from perception_object_pb2 import PerceptionObject as ProtoPerceptionObject
+# from nio_msgs.msg import PerceptionObject,PerceptionObjects
+# from perception_object_pb2 import PerceptionObjects as ProtoPerceptionObjects
+# from perception_object_pb2 import PerceptionObject as ProtoPerceptionObject
 from jsk_recognition_msgs.msg import BoundingBoxArray,BoundingBox
 
 class_colors = {

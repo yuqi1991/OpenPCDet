@@ -9,13 +9,15 @@ from .kitti.kitti_dataset import KittiDataset
 from .nuscenes.nuscenes_dataset import NuScenesDataset
 from .waymo.waymo_dataset import WaymoDataset
 from .dr.dr_dataset import DRDataset
+from .once.once_dataset import ONCEDataset
 
 __all__ = {
     'DatasetTemplate': DatasetTemplate,
     'KittiDataset': KittiDataset,
     'NuScenesDataset': NuScenesDataset,
     'WaymoDataset': WaymoDataset,
-    'DRDataset': DRDataset
+    'DRDataset': DRDataset,
+    'ONCEDataset': ONCEDataset
 }
 
 
