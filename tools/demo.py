@@ -2,37 +2,16 @@ import argparse
 import glob
 from pathlib import Path
 
+import mayavi.mlab as mlab
 import numpy as np
 import torch
-import math
+
 from pcdet.config import cfg, cfg_from_yaml_file
 from pcdet.datasets import DatasetTemplate
 from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
-import open3d as o3d
+from visual_utils import visualize_utils as V
 
-class_colors = {
-    "CAR":(1, 0, 0),
-    "CAR_HARD":(1, 0, 0),
-    "VAN":(1, 0, 0),
-    "VAN_HARD":(1, 0, 0),
-    "TRUCK":(1, 0, 1),
-    "BIG_TRUCK":(1, 0, 1),
-    "TRUCK_HARD":(1, 0, 1),
-    "BUS":(1, 0, 1),
-    "BUS_HARD":(1, 0, 1),
-    "PEDESTRIAN":(0, 1, 0),
-    "CYCLIST":(0, 0, 1),
-    "TRICYCLE":(0, 0, 1),
-    "MOTORIST":(0, 0, 1),
-    "TRICYCLE":(0, 0, 1),
-    "TRICYCLE_HARD":(0, 0, 1),
-    "CAR_HARD":(1, 0, 0),
-    "PEDESTRIAN_HARD":(0, 1, 0),
-    "CYCLIST_HARD":(0, 0, 1),
-    "MOTORIST_HARD":(0, 0, 1),
-    "CONE":(0, 1, 1),
-}
 
 class DemoDataset(DatasetTemplate):
     def __init__(self, dataset_cfg, class_names, training=True, root_path=None, logger=None, ext='.bin'):
@@ -71,7 +50,7 @@ class DemoDataset(DatasetTemplate):
         }
 
         data_dict = self.prepare_data(data_dict=input_dict)
-        return (data_dict,points)
+        return data_dict
 
 
 def parse_config():
@@ -137,39 +116,17 @@ def main():
     with torch.no_grad():
         for idx, data_dict in enumerate(demo_dataset):
             logger.info(f'Visualized sample index: \t{idx + 1}')
-            cloud = data_dict[1]
-            cloud = cloud[cloud[:,2] > -1.4]
-            data_dict = demo_dataset.collate_batch([data_dict[0]])
+            data_dict = demo_dataset.collate_batch([data_dict])
             load_data_to_gpu(data_dict)
             pred_dicts, _ = model.forward(data_dict)
 
-            # V.draw_scenes(
-            #     points=data_dict['points'][:, 1:], ref_boxes=pred_dicts[0]['pred_boxes'],
-            #     ref_scores=pred_dicts[0]['pred_scores'], ref_labels=pred_dicts[0]['pred_labels']
-            # )
-            # mlab.show(stop=True)
+            V.draw_scenes(
+                points=data_dict['points'][:, 1:], ref_boxes=pred_dicts[0]['pred_boxes'],
+                ref_scores=pred_dicts[0]['pred_scores'], ref_labels=pred_dicts[0]['pred_labels']
+            )
 
-            # show
-            # cloud = data_dict['points'].cpu().numpy()
-            objects = pred_dicts[0]['pred_boxes']
-            pc_data = o3d.PointCloud()
-            pc_data.points = o3d.Vector3dVector(cloud[:, 0:3])
-            pc_color = np.ones_like(cloud[:, 0:3]) * 0.6
-            bbox3ds = []
-            for i in range(pred_dicts[0]['pred_boxes'].shape[0]):
-                # class_name = obj["type"]
-                # if class_name not in class_colors:
-                #     print("Found wrong object type:{}".format(class_name))
-                #     continue
-                if pred_dicts[0]['pred_scores'][i] < 0.5:
-                    continue
-                color = (1, 0, 0)
-                FOR1 = o3d.create_mesh_coordinate_frame(size=1, origin=[0, 0, 0])
-                corners = get_obj_corners(pred_dicts[0]['pred_boxes'][i])
-                line_set = render_3dbbox(corners, color)
-                bbox3ds.append(line_set)
-            pc_data.colors = o3d.Vector3dVector(pc_color)
-            o3d.visualization.draw_geometries([FOR1,pc_data] + bbox3ds)
+            if not OPEN3D_FLAG:
+                mlab.show(stop=True)
 
     logger.info('Demo done.')
 
