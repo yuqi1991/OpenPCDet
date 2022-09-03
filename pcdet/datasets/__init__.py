@@ -14,6 +14,7 @@ from .lyft.lyft_dataset import LyftDataset
 from .custom.custom_dataset import CustomDataset
 from .dr.dr_dataset import DRDataset
 from .once.once_dataset import ONCEDataset
+from .apolloscape.apolloscape_dataset import ApolloDataset
 
 __all__ = {
     'DatasetTemplate': DatasetTemplate,
@@ -24,7 +25,8 @@ __all__ = {
     'LyftDataset': LyftDataset,
     'CustomDataset': CustomDataset,
     'DRDataset': DRDataset,
-    'ONCEDataset': ONCEDataset
+    'ONCEDataset': ONCEDataset,
+    'ApolloDataset': ApolloDataset
 }
 
 

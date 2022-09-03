@@ -1,24 +1,25 @@
-DATASET: 'DRDataset'
-DATA_PATH: '../data/dr'
+DATASET: 'ApolloDataset'
+DATA_PATH: '../data/apollo'
 
-POINT_CLOUD_RANGE: [0, -40, -3, 70.4, 40, 1]
+POINT_CLOUD_RANGE: [-75.2, -75.2, -2, 75.2, 75.2, 4]
 
-DATA_SPLIT: {
-    'train': train,
-    'test': val
-}
+CLASS_NAMES: ['Car', 'Truck','Pedestrian', 'TrafficCone','Cyclist']
 
 MAP_CLASS_TO_KITTI: {
     'Car': 'Car',
     'Pedestrian': 'Pedestrian',
     'Cyclist': 'Cyclist',
     'Truck': 'Car',
-    'Bus': 'Car',
+}
+
+DATA_SPLIT: {
+    'train': train,
+    'test': val
 }
 
 INFO_PATH: {
-    'train': [dr_infos_train.pkl],
-    'test': [dr_infos_val.pkl],
+    'train': [apollo_infos_train.pkl],
+    'test': [apollo_infos_val.pkl],
 }
 
 POINT_FEATURE_ENCODING: {
@@ -27,19 +28,18 @@ POINT_FEATURE_ENCODING: {
     src_feature_list: ['x', 'y', 'z', 'intensity'],
 }
 
-GET_ITEM_LIST: ["points"]
 DATA_AUGMENTOR:
     DISABLE_AUG_LIST: ['placeholder']
     AUG_CONFIG_LIST:
         - NAME: gt_sampling
           USE_ROAD_PLANE: False
           DB_INFO_PATH:
-              - dr_dbinfos_train.pkl
+              - apollo_dbinfos_train.pkl
           PREPARE: {
-             filter_by_min_points: ['Car:5', 'Pedestrian:5', 'Cyclist:5','TrafficCone:5','Truck:5'],
+             filter_by_min_points: ['Vehicle:5', 'Pedestrian:5', 'Cyclist:5'],
           }
 
-          SAMPLE_GROUPS: ['Car:20','Pedestrian:15', 'Cyclist:15','TrafficCone:15','Truck:15']
+          SAMPLE_GROUPS: ['Vehicle:20', 'Pedestrian:15', 'Cyclist:15']
           NUM_POINT_FEATURES: 4
           DATABASE_WITH_FAKELIDAR: False
           REMOVE_EXTRA_WIDTH: [0.0, 0.0, 0.0]

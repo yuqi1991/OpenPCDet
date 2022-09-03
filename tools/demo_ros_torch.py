@@ -10,19 +10,9 @@ from pcdet.datasets import DatasetTemplate
 from pcdet.models import build_network, load_data_to_gpu
 from pcdet.utils import common_utils
 
-import sys
-
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
-# sys.path.append("/home/nio/Workspace/AB3DMOT/AB3DMOT_libs")
-
-import rospy
+import rospy,ros_numpy
 from sensor_msgs.point_cloud2 import PointCloud2,read_points,read_points_list
 
-import ros_numpy
-
-from AB3DMOT_libs.model import AB3DMOT
-from xinshuo_io import load_list_from_folder, fileparts, mkdir_if_missing
 
 from visual_utils.ros_visualizer import Visualizer as RosVisualizer
 
@@ -54,6 +44,8 @@ class DemoDataset(DatasetTemplate):
             points = np.fromfile(self.sample_file_list[index], dtype=np.float32).reshape(-1, 4)
         elif self.ext == '.npy':
             points = np.load(self.sample_file_list[index])
+        elif self.ext == ".pcd":
+            raise NotImplementedError
         else:
             raise NotImplementedError
 
@@ -83,7 +75,6 @@ class Inference:
         self.model.cuda()
         self.model.eval()
         self.vis = RosVisualizer()
-        self.tracker = AB3DMOT()
         self.demo_dataset = demo_dataset
         self.logger = logger
         pcd_topic = "/sensing/lidar/combined_point_cloud"
@@ -124,8 +115,8 @@ class Inference:
     def callback(self,data):
         start = rospy.Time.now()
         pc_np = self.get_xyzi_points(ros_numpy.point_cloud2.pointcloud2_to_array(data), remove_nans=True).astype(np.float32)
-        pc_np[:,2] -= 0.5
-        pc_np = pc_np[pc_np[:,2] > -1.4]
+        # pc_np[:,2] -= 0.5
+        # pc_np = pc_np[pc_np[:,2] > -1.4]
         pc_np[:,3] = pc_np[:,3]/255.0
 
         with torch.no_grad():
@@ -138,7 +129,6 @@ class Inference:
             end_inf = rospy.Time.now().to_sec() - start_inf.to_sec()
             all_dets = self.remap_result(pred_dicts)
             start_track = rospy.Time.now()
-            all_dets = self.tracker.update(all_dets)
             end_track = rospy.Time.now().to_sec() - start_track.to_sec()
             self.vis.pub(all_dets,data.header.stamp)
             print("whole inference done: {}s, track time: {}s".format(end_inf, end_track))

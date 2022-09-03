@@ -5,13 +5,9 @@ import torch
 from pcdet.config import cfg, cfg_from_yaml_file
 from pcdet.datasets import build_dataloader
 from pcdet.utils import common_utils
-from jsk_recognition_msgs.msg import BoundingBoxArray,BoundingBox
-import sys
-
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/rospy")
-sys.path.append("/opt/ros/melodic/lib/python2.7/dist-packages/tf")
 
 import rospy
+from jsk_recognition_msgs.msg import BoundingBoxArray,BoundingBox
 from visual_utils.ros_visualizer import Visualizer as RosVisualizer
 
 def euler_to_quaternion(yaw, pitch, roll):
@@ -29,7 +25,7 @@ class Visualizer:
         self.frame_cnt = 0
 
 
-    def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=np.float):
+    def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=float):
         '''Pulls out x, y, and z columns from the cloud recordarray, and returns
         a 3xN matrix.
         '''
@@ -107,6 +103,7 @@ def main():
         training=True,
         total_epochs=1
     )
+
     logger.info(f'Total number of samples: \t{len(train_set)}')
     rospy.init_node("inference")
 

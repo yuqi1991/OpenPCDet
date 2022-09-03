@@ -10,25 +10,25 @@ from pcdet.utils import box_utils, calibration_kitti, common_utils, object3d_kit
 from pcdet.datasets.dataset import DatasetTemplate
 
 dr_class_map = {
-    "CAR":"CAR",
-    "VAN":"CAR",
-    "VAN_HARD":"CAR",
-    "TRUCK":"TRUCK",
-    "BIG_TRUCK":"TRUCK",
-    "TRUCK_HARD":"TRUCK",
-    "BUS":"BUS",
-    "BUS_HARD":"BUS",
-    "PEDESTRIAN":"PEDESTRIAN",
-    "CYCLIST":"CYCLIST",
-    "TRICYCLE":"CYCLIST",
-    "MOTORIST":"CYCLIST",
-    "TRICYCLE":"CYCLIST",
-    "TRICYCLE_HARD":"CYCLIST",
-    "CAR_HARD":"CAR",
-    "PEDESTRIAN_HARD":"PEDESTRIAN",
-    "CYCLIST_HARD":"CYCLIST",
-    "MOTORIST_HARD":"CYCLIST",
-    "CONE":"TRAFFIC_CONE",
+    "CAR":"Car",
+    "VAN":"Car",
+    "VAN_HARD":"Car",
+    "TRUCK":"Truck",
+    "BIG_TRUCK":"Truck",
+    "TRUCK_HARD":"Truck",
+    "BUS":"Bus",
+    "BUS_HARD":"Bus",
+    "PEDESTRIAN":"Pedestrian",
+    "CYCLIST":"Cyclist",
+    "TRICYCLE":"Cyclist",
+    "MOTORIST":"Cyclist",
+    "TRICYCLE":"Cyclist",
+    "TRICYCLE_HARD":"Cyclist",
+    "CAR_HARD":"Car",
+    "PEDESTRIAN_HARD":"Pedestrian",
+    "CYCLIST_HARD":"Cyclist",
+    "MOTORIST_HARD":"Cyclist",
+    "CONE":"TrafficCone",
 }
 
 class DRDataset(DatasetTemplate):
@@ -88,7 +88,7 @@ class DRDataset(DatasetTemplate):
         assert lidar_file.exists()
         points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         # points = points[points[:,2] > -1.4]
-        points[:,3] = 0.0
+        points[:, 2] += 1.72
         return points
 
     def get_image(self, idx):
@@ -211,7 +211,7 @@ class DRDataset(DatasetTemplate):
                 annotations['dimensions'] = np.array([[obj['bounding_box']['length'], obj['bounding_box']['height'],
                                                        obj['bounding_box']['width']] for obj in obj_list])  # lhw(camera) format
                 annotations['location'] = np.array([[obj['position']['x'], obj['position']['y'],
-                                                     obj['position']['z']] for obj in obj_list])
+                                                     obj['position']['z']+1.72] for obj in obj_list])
                 annotations['rotation_y'] = np.array([obj['heading'] for obj in obj_list])
                 # annotations['score'] = np.array([obj.score for obj in obj_list])
                 # annotations['difficulty'] = np.array([obj.level for obj in obj_list], np.int32)
@@ -511,15 +511,15 @@ def create_dr_infos(dataset_cfg, class_names, data_path, save_path, workers=12):
 
 if __name__ == '__main__':
     import sys
-    # if sys.argv.__len__() > 1 and sys.argv[1] == 'create_dr_infos':
-    import yaml
-    from pathlib import Path
-    from easydict import EasyDict
-    dataset_cfg = EasyDict(yaml.load(open(sys.argv[1])))
-    ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
-    create_dr_infos(
-        dataset_cfg=dataset_cfg,
-        class_names=['CAR', 'PEDESTRIAN', 'CYCLIST','TRUCK','TRAFFIC_CONE','BUS'],
-        data_path=ROOT_DIR / 'data' / 'dr',
-        save_path=ROOT_DIR / 'data' / 'dr'
-    )
+    if sys.argv.__len__() > 1 and sys.argv[1] == 'create_dr_infos':
+        import yaml
+        from pathlib import Path
+        from easydict import EasyDict
+        dataset_cfg = EasyDict(yaml.safe_load(open(sys.argv[2])))
+        ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
+        create_dr_infos(
+            dataset_cfg=dataset_cfg,
+            class_names=['Car', 'Truck', 'Bus','Pedestrian', 'TrafficCone','Cyclist'],
+            data_path=ROOT_DIR / 'data' / 'dr',
+            save_path=ROOT_DIR / 'data' / 'dr'
+        )

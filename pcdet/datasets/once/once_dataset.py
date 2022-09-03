@@ -60,7 +60,7 @@ class ONCEDataset(DatasetTemplate):
         # self.root_split_path = self.root_path / ('training' if self.split != 'test' else 'testing')
         self.root_split_path = self.root_path
 
-        self.sample_id_list = self.dataset_cfg.SPLIT_INFO['train' if split is 'train' else 'test']
+        self.sample_id_list = self.dataset_cfg.SPLIT_INFO['train' if split == 'train' else 'test']
 
     def get_lidar(self, idx):
         sequence_id = idx[:6]
