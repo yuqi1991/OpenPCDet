@@ -136,8 +136,8 @@ MODEL:
               'anchor_bottom_heights': [ 0.2 ],
               'align_center': False,
               'feature_map_stride': 2,
-              'matched_threshold': 0.6,
-              'unmatched_threshold': 0.45
+              'matched_threshold': 0.5,
+              'unmatched_threshold': 0.35
             },
         ]
 
