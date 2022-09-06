@@ -1,20 +1,14 @@
 from .detector3d_template import Detector3DTemplate
 
+
 class PointPillar(Detector3DTemplate):
     def __init__(self, model_cfg, num_class, dataset):
         super().__init__(model_cfg=model_cfg, num_class=num_class, dataset=dataset)
         self.module_list = self.build_networks()
-        self.vfe = self.module_list[0]
-        self.scatter = self.module_list[1]
-        self.backbone = self.module_list[2]
-        self.anchor_head = self.module_list[3]
 
-
-    def forward(self, input):
-
-        ##### Normal usage #####
+    def forward(self, batch_dict):
         for cur_module in self.module_list:
-            input = cur_module(input)
+            batch_dict = cur_module(batch_dict)
 
         if self.training:
             loss, tb_dict, disp_dict = self.get_training_loss()
@@ -24,7 +18,7 @@ class PointPillar(Detector3DTemplate):
             }
             return ret_dict, tb_dict, disp_dict
         else:
-            pred_dicts, recall_dicts = self.post_processing(input)
+            pred_dicts, recall_dicts = self.post_processing(batch_dict)
             return pred_dicts, recall_dicts
 
         ##### ONNX export #####

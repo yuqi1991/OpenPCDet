@@ -1,8 +1,8 @@
-CLASS_NAMES: ['Car', 'Pedestrian', 'Cyclist','Truck','TrafficCone','Bus']
+CLASS_NAMES: ['Car', 'Pedestrian', 'Cyclist','Truck','Bus','TrafficCone']
 
-DATA_CONFIG: 
+DATA_CONFIG:
     _BASE_CONFIG_: cfgs/dataset_configs/dr_dataset.yaml
-    POINT_CLOUD_RANGE: [-34.56, -39.68, -3, 34.56, 39.68, 1]
+    POINT_CLOUD_RANGE: [-34.56, -39.68, 0.0, 34.56, 39.68, 4.0]
 
     DATA_PROCESSOR:
         - NAME: mask_points_and_boxes_outside_range
@@ -29,17 +29,17 @@ DATA_CONFIG:
               DB_INFO_PATH:
                   - dr_dbinfos_train.pkl
               PREPARE: {
-                 filter_by_min_points: ['Car:5', 'Pedestrian:5', 'Cyclist:5','TrafficCone:5','Truck:5','Bus:5'],
+                 filter_by_min_points: ['Car:5', 'Pedestrian:5', 'Cyclist:5','Truck:5','Bus:5','TrafficCone:5'],
               }
 
-              SAMPLE_GROUPS: ['Car:15','Pedestrian:15', 'Cyclist:15','TrafficCone:15','Truck:15','Bus:15']
+              SAMPLE_GROUPS: ['Car:15','Pedestrian:15', 'Cyclist:15','Truck:15','Bus:15','TrafficCone:15',]
               NUM_POINT_FEATURES: 4
               DATABASE_WITH_FAKELIDAR: False
               REMOVE_EXTRA_WIDTH: [0.0, 0.0, 0.0]
               LIMIT_WHOLE_SCENE: False
 
             - NAME: random_world_flip
-              ALONG_AXIS_LIST: ['x']
+              ALONG_AXIS_LIST: ['x','y']
 
             - NAME: random_world_rotation
               WORLD_ROT_ANGLE: [-0.78539816, 0.78539816]
@@ -90,26 +90,6 @@ MODEL:
                 'unmatched_threshold': 0.45
             },
             {
-              'class_name': 'Truck',
-              'anchor_sizes': [ [3.9, 1.6, 1.56] ],
-              'anchor_rotations': [ 0, 1.57 ],
-              'anchor_bottom_heights': [ 1.5 ],
-              'align_center': False,
-              'feature_map_stride': 2,
-              'matched_threshold': 0.6,
-              'unmatched_threshold': 0.45
-            },
-            {
-              'class_name': 'Bus',
-              'anchor_sizes': [ [ 8, 2, 2 ] ],
-              'anchor_rotations': [ 0, 1.57 ],
-              'anchor_bottom_heights': [ 1.5 ],
-              'align_center': False,
-              'feature_map_stride': 2,
-              'matched_threshold': 0.6,
-              'unmatched_threshold': 0.45
-            },
-            {
                 'class_name': 'Pedestrian',
                 'anchor_sizes': [[0.8, 0.6, 1.73]],
                 'anchor_rotations': [0, 1.57],
@@ -128,6 +108,26 @@ MODEL:
                 'feature_map_stride': 2,
                 'matched_threshold': 0.5,
                 'unmatched_threshold': 0.35
+            },
+            {
+              'class_name': 'Truck',
+              'anchor_sizes': [ [ 3.9, 1.6, 1.56 ] ],
+              'anchor_rotations': [ 0, 1.57 ],
+              'anchor_bottom_heights': [ 1.5 ],
+              'align_center': False,
+              'feature_map_stride': 2,
+              'matched_threshold': 0.6,
+              'unmatched_threshold': 0.45
+            },
+            {
+              'class_name': 'Bus',
+              'anchor_sizes': [ [ 8, 2, 2 ] ],
+              'anchor_rotations': [ 0, 1.57 ],
+              'anchor_bottom_heights': [ 1.5 ],
+              'align_center': False,
+              'feature_map_stride': 2,
+              'matched_threshold': 0.6,
+              'unmatched_threshold': 0.45
             },
             {
               'class_name': 'TrafficCone',
@@ -173,7 +173,7 @@ MODEL:
 
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: 1
+    BATCH_SIZE_PER_GPU: 8
     NUM_EPOCHS: 40
 
     OPTIMIZER: adam_onecycle
