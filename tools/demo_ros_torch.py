@@ -1,7 +1,6 @@
 import argparse
 import glob,time
 from pathlib import Path
-import tensorrt as trt
 import numpy as np
 import torch
 
@@ -77,7 +76,7 @@ class Inference:
         self.vis = RosVisualizer()
         self.demo_dataset = demo_dataset
         self.logger = logger
-        pcd_topic = "/sensing/lidar/combined_point_cloud"
+        pcd_topic = "/blrobot/drivers/lidar/rslidar_points/top"
         self.subcriber = rospy.Subscriber(pcd_topic, PointCloud2, self.callback)
         self.frame_id = 0
 
@@ -90,12 +89,12 @@ class Inference:
         scores = scores[valids]
         obj_size = boxes.shape[0]
         dets = np.zeros([obj_size,7])
-        reorder = [0,1,2,6,3,4,5]
+        reorder = [0,1,2,3,4,5,6]
         dets = boxes[:,reorder]
         other_info = np.concatenate([scores[:,np.newaxis],labels[:,np.newaxis]],axis=1)
         return np.concatenate([dets,other_info],axis=1)
 
-    def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=np.float):
+    def get_xyzi_points(self, cloud_array, remove_nans=True, dtype=float):
         '''Pulls out x, y, and z columns from the cloud recordarray, and returns
         a 3xN matrix.
         '''
@@ -117,7 +116,7 @@ class Inference:
         pc_np = self.get_xyzi_points(ros_numpy.point_cloud2.pointcloud2_to_array(data), remove_nans=True).astype(np.float32)
         # pc_np[:,2] -= 0.5
         # pc_np = pc_np[pc_np[:,2] > -1.4]
-        pc_np[:,3] = pc_np[:,3]/255.0
+        pc_np[:,3] = 0.0
 
         with torch.no_grad():
             data_dict = self.demo_dataset.get_data(self.frame_id,pc_np)
@@ -130,7 +129,7 @@ class Inference:
             all_dets = self.remap_result(pred_dicts)
             start_track = rospy.Time.now()
             end_track = rospy.Time.now().to_sec() - start_track.to_sec()
-            self.vis.pub(all_dets,data.header.stamp)
+            self.vis.pub_obj(all_dets,data.header.stamp)
             print("whole inference done: {}s, track time: {}s".format(end_inf, end_track))
 
 

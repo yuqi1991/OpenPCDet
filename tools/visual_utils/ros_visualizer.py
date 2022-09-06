@@ -97,10 +97,10 @@ class Visualizer(object):
     def pub_obj(self,pred_dict,stamp):
         obj_size = pred_dict.shape[0]
         is_tracked = pred_dict.shape[1] == 10
-        timestamp = rospy.Time(stamp/1000000000)
+        timestamp = rospy.Time.now()
 
         bbox_array = BoundingBoxArray()
-        bbox_array.header.frame_id = "base_link"
+        bbox_array.header.frame_id = "rslidar_top"
         bbox_array.header.stamp=timestamp
 
         for i in range(obj_size):
@@ -110,9 +110,9 @@ class Visualizer(object):
                 label = int(pred_dict[i][8])
 
             bbox = BoundingBox()
-            bbox.header.frame_id = "base_link"
+            bbox.header.frame_id = "rslidar_top"
             bbox.header.stamp = timestamp
-            quaternion = euler_to_quaternion(pred_dict[i][3].item(),0, 0)
+            quaternion = euler_to_quaternion(pred_dict[i][6].item(),0, 0)
             bbox.pose.orientation.x = quaternion[0]
             bbox.pose.orientation.y = quaternion[1]
             bbox.pose.orientation.z = quaternion[2]
@@ -120,9 +120,9 @@ class Visualizer(object):
             bbox.pose.position.x = pred_dict[i][0]
             bbox.pose.position.y = pred_dict[i][1]
             bbox.pose.position.z = pred_dict[i][2]
-            bbox.dimensions.x = pred_dict[i][4]
-            bbox.dimensions.y = pred_dict[i][5]
-            bbox.dimensions.z = pred_dict[i][6]
+            bbox.dimensions.x = pred_dict[i][3]
+            bbox.dimensions.y = pred_dict[i][4]
+            bbox.dimensions.z = pred_dict[i][5]
             bbox.label = label
             bbox_array.boxes.append(bbox)
         self.publisher_bboxs.publish(bbox_array)
