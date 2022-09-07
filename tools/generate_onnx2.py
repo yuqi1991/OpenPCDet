@@ -1,18 +1,33 @@
-import argparse
+# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import glob
-from pathlib import Path
-
+import onnx
+import torch
+import argparse
 import numpy as np
-import torch,time
-import math
-import pprint, pickle
 
-from onnxruntime.quantization.onnx_model import ONNXModel
-
-from pcdet.config import cfg, cfg_from_yaml_file
-from pcdet.datasets import DatasetTemplate
-from pcdet.models import build_network, load_data_to_gpu
+from pathlib import Path
+from onnxsim import simplify
 from pcdet.utils import common_utils
+from pcdet.models import build_network
+from pcdet.datasets import DatasetTemplate
+from pcdet.config import cfg, cfg_from_yaml_file
+
+from .onnx_utils.exporter_paramters import export_paramters as export_paramters
+from .onnx_utils.simplifier_onnx import simplify_preprocess, simplify_postprocess
 
 
 class DemoDataset(DatasetTemplate):
@@ -52,12 +67,12 @@ class DemoDataset(DatasetTemplate):
         }
 
         data_dict = self.prepare_data(data_dict=input_dict)
-        return (data_dict,points)
+        return data_dict
 
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
-    parser.add_argument('--cfg_file', type=str, default='cfgs/kitti_models/second.yaml',
+    parser.add_argument('--cfg_file', type=str, default='cfgs/kitti_models/pointpillar.yaml',
                         help='specify the config for demo')
     parser.add_argument('--data_path', type=str, default='demo_data',
                         help='specify the point cloud data file or directory')
@@ -70,135 +85,68 @@ def parse_config():
 
     return args, cfg
 
-def get_obj_corners(tensor):
-    obj = tensor.cpu().numpy()
-    center = [obj[0], obj[1], obj[2]]  # xyz
-    size = [obj[3], obj[4], obj[5]]    # lwh
-    yaw = obj[6]  # heading
-    rot = np.asmatrix([[math.cos(yaw), -math.sin(yaw)], \
-                       [math.sin(yaw),  math.cos(yaw)]])
-    plain_pts = np.asmatrix([[0.5 * size[0], 0.5*size[1]], \
-                             [0.5 * size[0], -0.5*size[1]], \
-                             [-0.5 * size[0], -0.5*size[1]], \
-                             [-0.5 * size[0], 0.5*size[1]]])
-    tran_pts = np.asarray(rot * plain_pts.transpose());
-    tran_pts = tran_pts.transpose()
-    corners = np.arange(24).astype(np.float32).reshape(8, 3)
-    for i in range(8):
-        corners[i][0] = center[0] + tran_pts[i%4][0]
-        corners[i][1] = center[1] + tran_pts[i%4][1]
-        corners[i][2] = center[2] + (float(i >= 4) - 0.5) * size[2];
-    return corners
-
-
 
 def main():
     args, cfg = parse_config()
+    export_paramters(cfg)
     logger = common_utils.create_logger()
-    logger.info('-----------------Quick Demo of OpenPCDet-------------------------')
+    logger.info('------ Convert OpenPCDet model for TensorRT ------')
     demo_dataset = DemoDataset(
         dataset_cfg=cfg.DATA_CONFIG, class_names=cfg.CLASS_NAMES, training=False,
         root_path=Path(args.data_path), ext=args.ext, logger=logger
     )
-    logger.info(f'Total number of samples: \t{len(demo_dataset)}')
 
     model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=demo_dataset)
     model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=True)
     model.cuda()
     model.eval()
+    np.set_printoptions(threshold=np.inf)
     with torch.no_grad():
-        data_dict = demo_dataset[0]
-        data_dict = demo_dataset.collate_batch([data_dict[0]])
-        load_data_to_gpu(data_dict)
-        voxel_features = data_dict['voxels']
-        voxel_num_points = data_dict['voxel_num_points']
-        coords = data_dict['voxel_coords']
-        input_names = ["voxel_features","voxel_num_points","coords"]
-        input = [voxel_features,voxel_num_points,coords]
+        MAX_VOXELS = 10000
 
-        # ############### EXPORT  PFE #################
-        torch.onnx.export(model, input, "pfe.onnx", verbose=True, input_names=input_names,keep_initializers_as_inputs=True,
-                          do_constant_folding=True,
-                          output_names = ['pfe_feats'],opset_version=11,
-                          dynamic_axes={
-                              "voxel_features":{0:"voxel_num"},
-                              "voxel_num_points":{0:"voxel_num"},
-                              "coords":{0:"voxel_num"},
-                              "pfe_feats":{0:"voxel_num"}
-                          })
+        dummy_voxels = torch.zeros(
+            (MAX_VOXELS, 32, 4),
+            dtype=torch.float32,
+            device='cuda:0')
 
+        dummy_voxel_idxs = torch.zeros(
+            (MAX_VOXELS, 4),
+            dtype=torch.int32,
+            device='cuda:0')
 
-        data_dict = demo_dataset[2]
-        data_dict = demo_dataset.collate_batch([data_dict[0]])
-        load_data_to_gpu(data_dict)
-        voxel_features = data_dict['voxels']
-        voxel_num_points = data_dict['voxel_num_points']
-        coords = data_dict['voxel_coords']
-        input = [voxel_features,voxel_num_points,coords]
-        ############## PFE-Layer TensorRT #####
-        import onnx
-        import onnxruntime
-        import onnxsim
-        pfe_model = onnx.load("pfe.onnx")
-        logger.info('Demo done.')
-        pfe_session = onnxruntime.InferenceSession("pfe.onnx")
-        pfe_inputs = {pfe_session.get_inputs()[0].name: (voxel_features.data.cpu().numpy()),
-                      pfe_session.get_inputs()[1].name: (voxel_num_points.data.cpu().numpy()),
-                      pfe_session.get_inputs()[2].name: (coords.data.cpu().numpy())}
-        pfe_outs = pfe_session.run(None, pfe_inputs)
-        print('-------------------------- PFE ONNX Outputs ----------------------------')
-        print(pfe_outs[0])
-        print('------------------------- PFE Pytorch Outputs ---------------------------')
-        torch_output = model(input)
-        print(torch_output[0].cpu().detach().numpy())
-        print("PFE mean error:", np.mean(pfe_outs[0] - torch_output.cpu().detach().numpy()))
-        print("PFE max error:",  np.max(np.abs((pfe_outs[0] - torch_output.cpu().detach().numpy()))))
-        # print('------------------------- PP ANCHOR TensorRT ---------------------------')
-        # print("PFE mean error:", np.mean(pfe_outs[0] - torch_output.cpu().detach().numpy()))
-        # print("PFE max error:",
-        #       np.max(np.abs((pfe_outs[0] - torch_output.cpu().detach().numpy()))))
+        dummy_voxel_num = torch.zeros(
+            (MAX_VOXELS),
+            dtype=torch.int32,
+            device='cuda:0')
 
-        ############### EXPORT  NN #################
-        # input_names = ["spatial_features"]
-        # pkl_file = open("/home/nio/Workspace/OpenPCDet/output/spatial_feats/1.pkl", 'rb')
-        # spatial_features = pickle.load(pkl_file)
-        # spatial_features = torch.from_numpy(spatial_features).cuda()
-        # spatial_features = torch.ones([1,64,496,864],dtype=torch.float32).cuda()
-        # input = [spatial_features]
-        # torch.onnx.export(model, input, "pp_anchor.onnx", verbose=True, keep_initializers_as_inputs=True,
-        # input_names=input_names,output_names = ['batch_cls_preds','batch_box_preds'],opset_version=11)
+        dummy_input = dict()
+        dummy_input['voxels'] = dummy_voxels
+        dummy_input['voxel_num_points'] = dummy_voxel_num
+        dummy_input['voxel_coords'] = dummy_voxel_idxs
+        dummy_input['batch_size'] = 1
 
-        ############## PFE-Layer TensorRT #####
-        # import onnx
-        # import onnxruntime
-        # import onnx_tensorrt.backend as backend
-        # pkl_file = open("/home/nio/Workspace/OpenPCDet/output/spatial_feats/2.pkl", 'rb')
-        # spatial_features = pickle.load(pkl_file)
-        # spatial_features = torch.from_numpy(spatial_features).cuda()
-        # input = [spatial_features]
-        # logger.info('Demo done.')
-        # pp_anchor = onnxruntime.InferenceSession("pp_anchor_sim.onnx")
-        # pp_anchor_inputs = {pp_anchor.get_inputs()[0].name: (spatial_features.data.cpu().numpy())}
-        # pp_anchor_outs = pp_anchor.run(None, pp_anchor_inputs)
-        # print('-------------------------- PP ANCHOR ONNX Outputs ----------------------------')
-        # print(pp_anchor_outs[0])
-        # print(pp_anchor_outs[1])
-        # print('------------------------- PP ANCHOR Pytorch Outputs ---------------------------')
-        # torch_output = model(input)
-        # print(torch_output[0].cpu().detach().numpy())
-        # print(torch_output[1].cpu().detach().numpy())
-        # print("PP ANCHOR mean error:", np.mean(pp_anchor_outs[0] - torch_output[0].cpu().detach().numpy())," | ",
-        #                          np.mean(pp_anchor_outs[1] - torch_output[1].cpu().detach().numpy()) )
-        # print("PP ANCHOR max error:",
-        #       np.max(np.abs((pp_anchor_outs[0] - torch_output[0].cpu().detach().numpy()))), " | ",
-        #       np.max(np.abs((pp_anchor_outs[1] - torch_output[1].cpu().detach().numpy()))))
-        # print('------------------------- PP ANCHOR TensorRT ---------------------------')
-        # pp_onnx = onnx.load("pp_anchor_trim.onnx")
-        # engine = backend.prepare(pp_onnx, device="CUDA:0", max_batch_size=1)
-        # rpn_start_time = time.time()
-        # pp_output = engine.run(spatial_features.data.cpu().numpy())
-        # rpn_end_time = time.time()
-        # print(rpn_end_time - rpn_start_time)
+        torch.onnx.export(model,  # model being run
+                          dummy_input,  # model input (or a tuple for multiple inputs)
+                          "./pointpillar_raw.onnx",  # where to save the model (can be a file or file-like object)
+                          export_params=True,  # store the trained parameter weights inside the model file
+                          opset_version=11,  # the ONNX version to export the model to
+                          do_constant_folding=True,  # whether to execute constant folding for optimization
+                          keep_initializers_as_inputs=True,
+                          input_names=['voxels', 'voxel_num', 'voxel_idxs'],  # the model's input names
+                          output_names=['cls_preds', 'box_preds', 'dir_cls_preds'],  # the model's output names
+                          )
+
+        onnx_raw = onnx.load("./pointpillar_raw.onnx")  # load onnx model
+        onnx_trim_post = simplify_postprocess(onnx_raw)
+
+        onnx_simp, check = simplify(onnx_trim_post)
+        assert check, "Simplified ONNX model could not be validated"
+
+        onnx_final = simplify_preprocess(onnx_simp)
+        onnx.save(onnx_final, "pointpillar.onnx")
+        print('finished exporting onnx')
+
+    logger.info('[PASS] ONNX EXPORTED.')
 
 
 if __name__ == '__main__':
