@@ -98,13 +98,13 @@ def build_pfe(ckpt,cfg):
 
 if __name__ == "__main__":
     from pcdet.config import cfg, cfg_from_yaml_file
-    cfg_file = '/home/nio/Workspace/OpenPCDet/tools/cfgs/dr_models/pointpillar.yaml'
-    filename_mh = "/home/nio/Workspace/OpenPCDet/output/pointpillar/default/ckpt/checkpoint_epoch_2.pth"
+    cfg_file = '/OpenPCDet/tools/cfgs/dr_models/pointpillar.yaml'
+    filename_mh = "OpenPCDet/output/pointpillar/default/ckpt/checkpoint_epoch_2.pth"
     cfg_from_yaml_file(cfg_file, cfg)
     model_cfg=cfg.MODEL
     pfe , dummy_input  = build_pfe( filename_mh, cfg)
     pfe.eval().cuda()
-    export_onnx_file = "/home/nio/Workspace/OpenPCDet/dr_pfe.onnx"
+    export_onnx_file = "OpenPCDet/dr_pfe.onnx"
     torch.onnx.export(pfe,
                     dummy_input,
                     export_onnx_file,

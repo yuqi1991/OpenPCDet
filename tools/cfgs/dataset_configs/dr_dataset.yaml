@@ -5,7 +5,7 @@ POINT_CLOUD_RANGE: [0, -40, -3, 70.4, 40, 1]
 
 DATA_SPLIT: {
     'train': train,
-    'test': val
+    'test': test
 }
 
 MAP_CLASS_TO_KITTI: {
@@ -18,7 +18,7 @@ MAP_CLASS_TO_KITTI: {
 
 INFO_PATH: {
     'train': [dr_infos_train.pkl],
-    'test': [dr_infos_val.pkl],
+    'test': [dr_infos_test.pkl],
 }
 
 POINT_FEATURE_ENCODING: {

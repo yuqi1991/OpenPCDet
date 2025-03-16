@@ -519,7 +519,7 @@ if __name__ == '__main__':
         ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
         create_dr_infos(
             dataset_cfg=dataset_cfg,
-            class_names=['Car', 'Truck', 'Bus','Pedestrian', 'TrafficCone','Cyclist'],
+            class_names=['Car', 'Pedestrian', 'Cyclist','Truck','Bus','TrafficCone'],
             data_path=ROOT_DIR / 'data' / 'dr',
             save_path=ROOT_DIR / 'data' / 'dr'
         )

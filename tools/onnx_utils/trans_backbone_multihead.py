@@ -50,12 +50,12 @@ def build_backbone_multihead(ckpt , cfg ):
 if __name__ == "__main__":
     import numpy as np 
     from pcdet.config import cfg, cfg_from_yaml_file
-    cfg_file = '/home/nio/Workspace/OpenPCDet/tools/cfgs/dr_models/pointpillar.yaml'
-    filename_mh = "/home/nio/Workspace/OpenPCDet/output/pointpillar/default/ckpt/checkpoint_epoch_2.pth"
+    cfg_file = 'tools/cfgs/dr_models/pointpillar.yaml'
+    filename_mh = "output/pointpillar/default/ckpt/checkpoint_epoch_2.pth"
     cfg_from_yaml_file(cfg_file, cfg)
     model , dummy_input = build_backbone_multihead(filename_mh , cfg )
 
-    export_onnx_file = "/home/nio/Workspace/OpenPCDet/dr_backbone.onnx"
+    export_onnx_file = "dr_backbone.onnx"
     model.eval().cuda()
     torch.onnx.export(model,
                       dummy_input,

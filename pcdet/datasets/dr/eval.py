@@ -638,12 +638,12 @@ def get_official_eval_result(gt_annos, dt_annos, current_classes, PR_detail_dict
                             [0.5, 0.25, 0.25, 0.5, 0.25, 0.5]])
     min_overlaps = np.stack([overlap_0_7, overlap_0_5], axis=0)  # [2, 3, 5]
     class_to_name = {
-        0: 'CAR',
-        1: 'PEDESTRIAN',
-        2: 'CYCLIST',
-        3: 'VAN',
-        4: 'CONE',
-        5: 'TRUCK'
+        0: 'Car',
+        1: 'Pedestrian',
+        2: 'Cyclist',
+        3: 'Truck',
+        4: 'Bus',
+        5: 'TrafficCone'
     }
     name_to_class = {v: n for n, v in class_to_name.items()}
     if not isinstance(current_classes, (list, tuple)):

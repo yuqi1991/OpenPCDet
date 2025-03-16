@@ -92,12 +92,12 @@ class AnchorHeadSingle(AnchorHeadTemplate):
         else:
             dir_cls_preds = None
 
-        batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(
-            batch_size=1,
-            cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
-        )
+        # batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(
+        #     batch_size=1,
+        #     cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
+        # )
             # data_dict['batch_cls_preds'] = batch_cls_preds
             # data_dict['batch_box_preds'] = batch_box_preds
             # data_dict['cls_preds_normalized'] = False
 
-        return [batch_cls_preds,batch_box_preds]
+        return [cls_preds,box_preds,dir_cls_preds]

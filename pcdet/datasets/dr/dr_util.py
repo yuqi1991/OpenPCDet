@@ -1,8 +1,9 @@
 
 import sys,io,random, os
-
+from pathlib import Path
 if __name__ == '__main__':
-    path = '/home/nio/Workspace/dataset/Deeproute_open_dataset/ImageSets'
+    ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
+    path = ROOT_DIR / 'data' / 'dr' / 'ImageSets'
     os.makedirs(path, exist_ok=True)
     all_index = [str('%05d\n' % i) for i in range(1,10000)]
     random.shuffle(all_index)

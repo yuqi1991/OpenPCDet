@@ -26,8 +26,8 @@ from pcdet.models import build_network
 from pcdet.datasets import DatasetTemplate
 from pcdet.config import cfg, cfg_from_yaml_file
 
-from .onnx_utils.exporter_paramters import export_paramters as export_paramters
-from .onnx_utils.simplifier_onnx import simplify_preprocess, simplify_postprocess
+from onnx_utils.exporter_paramters import export_paramters as export_paramters
+from onnx_utils.simplifier_onnx import simplify_preprocess, simplify_postprocess
 
 
 class DemoDataset(DatasetTemplate):
@@ -97,6 +97,7 @@ def main():
     )
 
     model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=demo_dataset)
+    model.is_onnx_export = True
     model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=True)
     model.cuda()
     model.eval()
@@ -105,7 +106,7 @@ def main():
         MAX_VOXELS = 10000
 
         dummy_voxels = torch.zeros(
-            (MAX_VOXELS, 32, 4),
+            (MAX_VOXELS, 64, 4),
             dtype=torch.float32,
             device='cuda:0')
 
@@ -124,9 +125,10 @@ def main():
         dummy_input['voxel_num_points'] = dummy_voxel_num
         dummy_input['voxel_coords'] = dummy_voxel_idxs
         dummy_input['batch_size'] = 1
+        dummy_input_list = [dummy_input['voxels'], dummy_input['voxel_num_points'], dummy_input['voxel_coords']]
 
         torch.onnx.export(model,  # model being run
-                          dummy_input,  # model input (or a tuple for multiple inputs)
+                          dummy_input_list,  # model input (or a tuple for multiple inputs)
                           "./pointpillar_raw.onnx",  # where to save the model (can be a file or file-like object)
                           export_params=True,  # store the trained parameter weights inside the model file
                           opset_version=11,  # the ONNX version to export the model to

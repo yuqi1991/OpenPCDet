@@ -91,7 +91,7 @@ def simplify_preprocess(onnx_model):
     # V is the maximum number of voxels per frame
     # P is the maximum number of points per voxel
     # C' is the number of channels(features) per point in voxels.
-    input_new = gs.Variable(name="voxels", dtype=np.float32, shape=(MAX_VOXELS, 32, 10))
+    input_new = gs.Variable(name="voxels", dtype=np.float32, shape=(MAX_VOXELS, 64, 10))
 
     # voxel_idxs: [V, 4]
     # V is the maximum number of voxels per frame
