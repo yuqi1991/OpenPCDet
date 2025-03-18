@@ -28,10 +28,14 @@ def get_thresholds(scores: np.ndarray, num_gt, num_sample_pts=41):
 
 
 def clean_data(gt_anno, dt_anno, current_class, difficulty):
-    CLASS_NAMES = ['car', 'pedestrian', 'cyclist', 'van', 'person_sitting', 'truck']
+    CLASS_NAMES = ['Car', 'Pedestrian', 'Cyclist', 'Truck', 'Bus', 'TrafficCone']
     MIN_HEIGHT = [40, 25, 25]
     MAX_OCCLUSION = [0, 1, 2]
     MAX_TRUNCATION = [0.15, 0.3, 0.5]
+    X_RANGE = [-34.56, 34.56]
+    Y_RANGE = [-39.68, 39.68]
+    Z_RANGE = [-3.0, 3.0]
+
     dc_bboxes, ignored_gt, ignored_dt = [], [], []
     current_cls_name = CLASS_NAMES[current_class].lower()
     num_gt = len(gt_anno["name"])
@@ -52,6 +56,10 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
         else:
             valid_class = -1
         ignore = False
+        if "location" in gt_anno:
+            x, y, z = gt_anno["location"][i]
+            if x < X_RANGE[0] or x > X_RANGE[1] or y < Y_RANGE[0] or y > Y_RANGE[1] or z < Z_RANGE[0] or z > Z_RANGE[1]:
+                ignore = True
         if valid_class == 1 and not ignore:
             ignored_gt.append(0)
             num_valid_gt += 1
@@ -67,8 +75,14 @@ def clean_data(gt_anno, dt_anno, current_class, difficulty):
             valid_class = 1
         else:
             valid_class = -1
-
-        if valid_class == 1:
+        
+        ignore = False
+        if "location" in dt_anno:
+            x, y, z = dt_anno["location"][i]
+            if x < X_RANGE[0] or x > X_RANGE[1] or y < Y_RANGE[0] or y > Y_RANGE[1] or z < Z_RANGE[0] or z > Z_RANGE[1]:
+                ignore = True
+                
+        if valid_class == 1 and not ignore:
             ignored_dt.append(0)
         else:
             ignored_dt.append(-1)

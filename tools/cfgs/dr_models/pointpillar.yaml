@@ -2,7 +2,7 @@ CLASS_NAMES: ['Car', 'Pedestrian', 'Cyclist','Truck','Bus','TrafficCone']
 
 DATA_CONFIG:
     _BASE_CONFIG_: cfgs/dataset_configs/dr_dataset.yaml
-    POINT_CLOUD_RANGE: [-34.56, -39.68, 0.0, 34.56, 39.68, 4.0]
+    POINT_CLOUD_RANGE: [-34.56, -39.68, -3.0, 34.56, 39.68, 3.0]
 
     DATA_PROCESSOR:
         - NAME: mask_points_and_boxes_outside_range
@@ -15,7 +15,7 @@ DATA_CONFIG:
           }
 
         - NAME: transform_points_to_voxels
-          VOXEL_SIZE: [0.16, 0.16, 4]
+          VOXEL_SIZE: [0.16, 0.16, 6]
           MAX_POINTS_PER_VOXEL: 32
           MAX_NUMBER_OF_VOXELS: {
             'train': 16000,
@@ -29,7 +29,7 @@ DATA_CONFIG:
               DB_INFO_PATH:
                   - dr_dbinfos_train.pkl
               PREPARE: {
-                 filter_by_min_points: ['Car:5', 'Pedestrian:5', 'Cyclist:5','Truck:5','Bus:5','TrafficCone:5'],
+                 filter_by_min_points: ['Car:5', 'Pedestrian:5', 'Cyclist:5','Truck:5','Bus:5','TrafficCone:1'],
               }
 
               SAMPLE_GROUPS: ['Car:15','Pedestrian:15', 'Cyclist:15','Truck:15','Bus:15','TrafficCone:15',]
@@ -39,7 +39,7 @@ DATA_CONFIG:
               LIMIT_WHOLE_SCENE: False
 
             - NAME: random_world_flip
-              ALONG_AXIS_LIST: ['x','y']
+              ALONG_AXIS_LIST: ['x']
 
             - NAME: random_world_rotation
               WORLD_ROT_ANGLE: [-0.78539816, 0.78539816]
@@ -83,7 +83,7 @@ MODEL:
                 'class_name': 'Car',
                 'anchor_sizes': [[3.9, 1.6, 1.56]],
                 'anchor_rotations': [0, 1.57],
-                'anchor_bottom_heights': [1.5],
+                'anchor_bottom_heights': [-1.78],
                 'align_center': False,
                 'feature_map_stride': 2,
                 'matched_threshold': 0.6,
@@ -91,29 +91,29 @@ MODEL:
             },
             {
                 'class_name': 'Pedestrian',
-                'anchor_sizes': [[0.8, 0.6, 1.73]],
+                'anchor_sizes': [[0.5, 0.5, 1.73]],
                 'anchor_rotations': [0, 1.57],
-                'anchor_bottom_heights': [1.0],
+                'anchor_bottom_heights': [ -1.78],
                 'align_center': False,
                 'feature_map_stride': 2,
-                'matched_threshold': 0.5,
+                'matched_threshold': 0.3,
                 'unmatched_threshold': 0.35
             },
             {
                 'class_name': 'Cyclist',
-                'anchor_sizes': [[0.8, 0.6, 1.73]],
+                'anchor_sizes': [[1.7, 0.5, 1.5]],
                 'anchor_rotations': [0, 1.57],
-                'anchor_bottom_heights': [1.0],
+                'anchor_bottom_heights': [ -1.78],
                 'align_center': False,
                 'feature_map_stride': 2,
-                'matched_threshold': 0.5,
+                'matched_threshold': 0.3,
                 'unmatched_threshold': 0.35
             },
             {
               'class_name': 'Truck',
-              'anchor_sizes': [ [ 3.9, 1.6, 1.56 ] ],
+              'anchor_sizes': [ [ 7.0, 2.5, 3.0 ] ],
               'anchor_rotations': [ 0, 1.57 ],
-              'anchor_bottom_heights': [ 1.5 ],
+              'anchor_bottom_heights': [ -1.78 ],
               'align_center': False,
               'feature_map_stride': 2,
               'matched_threshold': 0.6,
@@ -121,9 +121,9 @@ MODEL:
             },
             {
               'class_name': 'Bus',
-              'anchor_sizes': [ [ 8, 2, 2 ] ],
+              'anchor_sizes': [ [ 10.0, 2.5, 3.0 ] ],
               'anchor_rotations': [ 0, 1.57 ],
-              'anchor_bottom_heights': [ 1.5 ],
+              'anchor_bottom_heights': [ -1.78 ],
               'align_center': False,
               'feature_map_stride': 2,
               'matched_threshold': 0.6,
@@ -133,10 +133,10 @@ MODEL:
               'class_name': 'TrafficCone',
               'anchor_sizes': [ [ 0.2, 0.2, 0.4 ] ],
               'anchor_rotations': [ 0, 1.57 ],
-              'anchor_bottom_heights': [ 0.2 ],
+              'anchor_bottom_heights': [ -1.78],
               'align_center': False,
               'feature_map_stride': 2,
-              'matched_threshold': 0.5,
+              'matched_threshold': 0.3,
               'unmatched_threshold': 0.35
             },
         ]
@@ -173,8 +173,8 @@ MODEL:
 
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: 8
-    NUM_EPOCHS: 40
+    BATCH_SIZE_PER_GPU: 16
+    NUM_EPOCHS: 80
 
     OPTIMIZER: adam_onecycle
     LR: 0.003
