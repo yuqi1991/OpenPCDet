@@ -88,7 +88,7 @@ class DRDataset(DatasetTemplate):
         assert lidar_file.exists()
         points = np.fromfile(str(lidar_file), dtype=np.float32).reshape(-1, 4)
         # points = points[points[:,2] > -1.4]
-        points[:, 2] += 1.72
+        # points[:, 2] += 1.72 
         return points
 
     def get_image(self, idx):
@@ -497,7 +497,7 @@ def create_dr_infos(dataset_cfg, class_names, data_path, save_path, workers=12):
     print('DR info trainval file is saved to %s' % trainval_filename)
 
     dataset.set_split('test')
-    dr_infos_test = dataset.get_infos(num_workers=workers, has_label=False, count_inside_pts=False)
+    dr_infos_test = dataset.get_infos(num_workers=workers, has_label=True, count_inside_pts=False)
     with open(test_filename, 'wb') as f:
         pickle.dump(dr_infos_test, f)
     print('DR info test file is saved to %s' % test_filename)

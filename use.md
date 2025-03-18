@@ -1,7 +1,6 @@
 python -m pip install --upgrade pip
 pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
-pip install spconv-cu113
-pip install --upgrade setuptools wheel
+pip install spconv-cu113 setuptools==57.5.0 wheel
 python setup.py develop
 pip install -e . 
 pip install --upgrade onnx-simplifier==0.4.35 onnx==1.15.0 onnx_graphsurgeon==0.5.6
